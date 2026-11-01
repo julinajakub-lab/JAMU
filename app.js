@@ -150,8 +150,8 @@ async function isLoggedIn() {
 }
 const WRONG = [
   'Wrong password. Iva, is that you?',
-  'Nope. Even Nikol knows this one. She just never uses it.',
-  'Still wrong. This is worse than a Friday-midnight deadline.',
+  'Nope. Nikol has it saved in a perfectly labelled file. Ask her.',
+  'Still wrong. Even the study department gave us more attempts than this. (It didn’t.)',
   'Wrong again. Ask the current king, he knows.'
 ];
 let wrongCount = 0;
@@ -209,7 +209,7 @@ function pickMe(force = false) {
       const b = e.target.closest('[data-pick]'); if (!b) return;
       if (b.dataset.pick === 'iva') { $('#pick-msg').textContent = 'Iva is no longer with us. 🕯️ (Please pick someone who actually shows up.)'; return; }
       ls.set('jamu-me', b.dataset.pick); closeModal(); render();
-      if (b.dataset.pick === 'nikol') toast('Nikol! Is that really you? We’re so happy. 💌');
+      if (b.dataset.pick === 'nikol') toast('Nikol! You actually arrived! We’re so happy. 💌');
       else toast('Welcome back, ' + nameOf(b.dataset.pick) + '!');
     });
   });
@@ -256,7 +256,7 @@ function shell(active, content) {
   ${LIVE ? '' : `<div class="demo-banner"><div class="wrap">Demo mode: changes are saved only in this browser. Once the database is connected, the whole gang shares everything.</div></div>`}
   <main><div class="wrap">${content}</div></main>
   <footer><div class="wrap">
-    <span>Est. 2016 at JAMU, Brno. Forged by deadlines, held together by love.</span>
+    <span>Est. 2016 at JAMU, Brno. Survived together, friends ever since.</span>
     <span class="row" style="gap:4px 12px"><a href="#ideas">Suggestions${openIdeas() ? ` (${openIdeas()} open)` : ''}</a><span>In memory of ${esc(GHOST.name)}, who is no longer with us. (She’s fine.)</span><button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
   </div></footer>
   <button class="suggest-fab" type="button" data-action="suggest">✎ Suggest an edit</button>`;
@@ -265,7 +265,9 @@ function shell(active, content) {
 /* ---------------- views ---------------- */
 const FALLBACK_QUOTES = [
   '“Iva is no longer with us.”',
-  'Nikol: “I’m definitely coming this time! ❤️”',
+  '“Is Nikol here yet?” Nobody has asked this since 2017.',
+  '“If we survived SETKÁNÍ/ENCOUNTER, we can survive one weekend in a cottage.”',
+  '“Deadline? We don’t do deadlines anymore. We do dinner.”',
   '“Whatever JAMU did to us, one cottage weekend undoes it.”',
   '“Who brought the bottle opener?” — every trip, ever'
 ];
@@ -295,7 +297,6 @@ function todoBlock() {
   } else {
     add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
   }
-  add('Something big happened in your life (a baby, a wedding, a new flat)? Put it on our timeline.', `<button class="btn sm" type="button" data-action="add-ms">Add a milestone</button>`);
   add('Spotted a mistake, or have an idea for the site?', `<button class="btn sm" type="button" data-action="suggest">Suggest an edit</button>`);
   return `
     <section class="stack" style="gap:10px">
@@ -342,19 +343,19 @@ function viewHome() {
     <section class="hero">
       <p class="eyebrow">Est. 2016 · JAMU, Brno</p>
       <h1>Společenstvo Inscenace</h1>
-      <p>Ten people who survived theatre management together (plus one adopted from JevTech). Twice a year we leave the spreadsheets behind for a cottage in the woods to cook, walk, talk and recover.</p>
+      <p>Ten people who survived theatre management at JAMU together (plus one adopted from JevTech). Twice a year we leave the deadlines behind for a cottage in the woods to cook, walk, talk and recover.</p>
     </section>
 
+    <div class="home-intro">
     <section class="letter">
       <p class="eyebrow">Welcome, gang</p>
       <div class="letter-body">
         <p>This is our own little corner of the internet.</p>
-        <p>We met at JAMU in 2016, survived more deadlines than anyone should, and somehow ended up as family. Every time we sit at a cottage table, someone says “we should write this down”. So here it is: one place for everything that holds us together.</p>
+        <p>We met at JAMU in 2016, survived more deadlines than anyone should (and one whole international festival), and somehow ended up as family. A common enemy brought us together; love kept us there. Every time we sit at a cottage table, someone says “we should write this down”. So here it is: one place for everything that holds us together.</p>
         <ul class="letter-list">
           <li><a href="#next"><b>Plan the next trip.</b></a> Vote on dates, say if you’re coming, and find the cottage with one tap.</li>
           <li><a href="#archive"><b>Remember the old ones.</b></a> Every trip with its photos, stories and the quotes we’ll never live down.</li>
           <li><a href="#after"><b>Settle up without awkward messages.</b></a> Log who paid for what and the page works out who owes whom.</li>
-          <li><a href="#timeline"><b>Keep our life story.</b></a> Babies, weddings, new homes and other big moments on one shared timeline.</li>
         </ul>
         <p>It’s ours, so make it better. If something is missing or wrong, press “Suggest an edit” in the corner.</p>
         <p class="signature">Built for us with <span class="heart">♥</span><br><span>Jakub (Honza Peniz)</span></p>
@@ -362,6 +363,7 @@ function viewHome() {
     </section>
 
     ${todoBlock()}
+    </div>
 
     <section class="court" aria-label="The royal court">
       <div class="throne reign">
@@ -380,13 +382,13 @@ function viewHome() {
       <div class="section-head"><h2>By the numbers</h2></div>
       <div class="kpis">
         <div class="kpi"><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
-        <div class="kpi"><b>${years}</b><span class="muted small">years since JAMU</span></div>
+        <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU</span></div>
         <div class="kpi"><b>${done.filter(t => t.crowned).length}</b><span class="muted small">crowns handed over</span></div>
-        <div class="kpi"><b>${nikolCame}/${done.length}</b><span class="muted small">Nikol’s attendance</span></div>
+        <div class="kpi"><b>${nikolCame}/${done.length}</b><span class="muted small">trips Nikol arrived at</span></div>
       </div>
     </section>
 
-    <section class="stack" style="gap:8px">
+    <section class="stack quote-block" style="gap:8px">
       <p class="eyebrow">Overheard at a cottage</p>
       <p class="quote">${esc(q.text)}</p>
       ${q.trip ? `<p class="muted small">from <a href="#trip-${esc(q.trip.id)}">${esc(q.trip.title)}</a></p>` : ''}
@@ -408,8 +410,9 @@ function viewGang() {
         <div style="min-width:0">
           <h3>${esc(m.name)}</h3>
           <p class="nick ${m.nick ? '' : 'unset'}">${m.nick ? esc(m.nick) : 'nickname not set yet'}</p>
+          ${m.jamu ? `<p class="jamu-role">${esc(m.jamu)}</p>` : ''}
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
-          <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>∞ love sent 💌</span>' : ''}</div>
+          <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>arrivals: pending</span>' : ''}</div>
         </div>
       </article>`;
   }).join('');
@@ -418,7 +421,7 @@ function viewGang() {
     <section class="hero">
       <p class="eyebrow">10 active members · 1 no longer with us</p>
       <h1>The Gang</h1>
-      <p>Met at JAMU in 2016. Bonded by a common enemy (the workload and its deadlines). Stayed for the love.</p>
+      <p>Met at JAMU in 2016. Bonded by a common enemy (the workload, the deadlines, the festival). Stayed for the love.</p>
     </section>
     <section class="gang">
       ${cards}
@@ -428,7 +431,7 @@ function viewGang() {
         <div>
           <h3>${esc(GHOST.name)}</h3>
           <p class="nick unset">2016 – 2016-ish</p>
-          <p class="small" style="margin-top:6px">Is no longer with us. (She’s absolutely fine. She just never wanted to hang out.)</p>
+          <p class="small" style="margin-top:6px">Is no longer with us. (She’s absolutely fine. She just never wanted to hang out. Some people survive JAMU differently.)</p>
           <div class="tally"><span>0 trips</span><span>forever in our hearts</span></div>
         </div>
       </article>
@@ -528,7 +531,7 @@ function viewNext() {
     <section class="panel stack">
       <div class="spread">
         <div><p class="eyebrow">Who’s coming</p><h2 class="num">${tally.yes} coming · ${tally.maybe} maybe</h2></div>
-        <p class="muted small">Answer for yourself. (Or for Nikol. She’ll say yes anyway.)</p>
+        <p class="muted small">Answer for yourself. (Nikol, we’ll believe it when we see you.)</p>
       </div>
       <div>
         ${MEMBERS.map(m => `
@@ -550,9 +553,10 @@ function viewArchive() {
   const done = doneTrips();
   return `
   <div class="stack-lg">
-    <section class="spread" style="align-items:end">
-      <div class="stack" style="gap:8px"><p class="eyebrow">Every weekend we survived</p><h1>The Archive</h1><p class="muted" style="max-width:60ch">Every trip we\u2019ve taken. Open one to see its photos, stories and who paid for what. Remember a trip that isn\u2019t here yet? Add it.</p></div>
-      <button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button>
+    <section class="hero">
+      <p class="eyebrow">Every weekend we survived</p><h1>The Archive</h1>
+      <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who paid for what. Remember a trip that isn\u2019t here yet? Add it.</p>
+      <div class="row"><button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button></div>
     </section>
     ${done.length ? `<div class="table-wrap"><table class="sheet">
       <thead><tr><th>Date</th><th>Trip</th><th>Organiser</th><th>Who came</th><th>Photos</th></tr></thead>
@@ -572,7 +576,7 @@ function tripRow(t) {
     <td class="date">${esc(fmtRange(t.start, t.end))}</td>
     <td><a class="trip-link" href="${href}">${esc(t.title || 'Untitled trip')}</a>${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
     <td class="small"><span class="crown">♛</span> ${esc(nameOf(t.organiser))}${t.crowned ? ` <span class="muted">→ ${esc(nameOf(t.crowned))}</span>` : ''}</td>
-    <td><div class="row" style="gap:6px"><div class="av-row">${(t.attendees || []).map(id => avatar(id, 'xs')).join('')}</div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol came</span>' : ''}</div></td>
+    <td><div class="row" style="gap:6px"><div class="av-row">${(t.attendees || []).map(id => avatar(id, 'xs')).join('')}</div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol arrived!</span>' : ''}</div></td>
     <td class="small">${(() => { const n = S.photos.filter(p => p.trip_id === t.id).length; return n ? `${n} ${n === 1 ? 'photo' : 'photos'}` : safeUrl(t.photos_url) ? 'Album' : '<span class="muted">—</span>'; })()}</td>
   </tr>`;
 }
@@ -716,7 +720,10 @@ const KINDS = {
 };
 function viewTimeline() {
   const items = [
-    { date: '2016-09-01', kind: 'gang', title: 'We meet at JAMU', label: 'Where it all began', note: 'Theatre management, class of 2016. Dalibor joins from JevTech and gets adopted.', fixed: true },
+    { date: '2016-09-01', approx: true, kind: 'gang', title: 'We meet at JAMU', label: 'Where it all began', note: 'Theatre management, class of 2016. Dalibor joins from JevTech and gets adopted. Nobody knows yet what they signed up for.', fixed: true },
+    { date: '2017-04-01', approx: true, kind: 'encounter', title: 'The 27th SETKÁNÍ/ENCOUNTER', label: 'First festival', note: 'Freshmen. We run errands, carry things, sleep very little and learn what an international theatre festival really costs (sleep, mostly).', fixed: true },
+    { date: '2018-04-01', approx: true, kind: 'encounter', title: 'The 28th SETKÁNÍ/ENCOUNTER', label: 'Second year', note: 'More responsibility, same amount of sleep. We watch the older years and quietly think: next year it\u2019s us.', fixed: true },
+    { date: '2019-04-02', approx: true, kind: 'encounter', title: 'We run the 29th SETKÁNÍ/ENCOUNTER', label: 'Our masterpiece', who: ['julia', 'michaela', 'sylvie'], note: 'Our year as the main organisers, with Júlia as head of the festival. Theatre schools from all over Europe in Brno, and a team that came out of it as a family.', fixed: true },
     ...S.milestones,
     ...doneTrips().filter(t => t.start).map(t => ({ date: t.start, kind: 'trip', title: t.title, note: t.place, trip: t, who: t.attendees || [] }))
   ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -725,12 +732,12 @@ function viewTimeline() {
     const y = (m.date || '').slice(0, 4);
     const yearHead = y !== lastYear ? `<li class="tl-year"><span>${esc(y)}</span></li>` : '';
     lastYear = y;
-    const k = m.kind === 'trip' ? ['Trip', '🏕️'] : (KINDS[m.kind] || KINDS.other);
+    const k = m.kind === 'trip' ? ['Trip', '🏕️'] : m.kind === 'encounter' ? ['SETKÁNÍ/ENCOUNTER', '🎭'] : (KINDS[m.kind] || KINDS.other);
     return `${yearHead}
       <li class="tl-item ${m.kind === 'trip' ? 'is-trip' : ''}">
         <span class="tl-dot" aria-hidden="true">${k[1]}</span>
         <div class="tl-card">
-          <p class="small muted">${esc(fmtDate(m.date))} · ${esc(k[0])}</p>
+          <p class="small muted">${esc(m.approx ? (parseDate(m.date)?.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) || '') : fmtDate(m.date))} · ${esc(k[0])}</p>
           <h3>${m.trip ? `<a href="#trip-${esc(m.trip.id)}">${esc(m.title)}</a>` : esc(m.title)}</h3>
           ${m.label ? `<span class="badge">${esc(m.label)}</span>` : ''}
           ${m.note ? `<p class="small">${esc(m.note)}</p>` : ''}
@@ -741,13 +748,11 @@ function viewTimeline() {
   }).join('');
   return `
   <div class="stack-lg">
-    <section class="spread" style="align-items:end">
-      <div class="stack" style="gap:8px">
-        <p class="eyebrow">Our life, together</p>
-        <h1>Timeline</h1>
-        <p class="muted" style="max-width:60ch">Babies, weddings, new homes, new jobs and other big moments. Trips from the archive appear here automatically.</p>
-      </div>
-      <button class="btn primary" type="button" data-action="add-ms">+ Add a milestone</button>
+    <section class="hero">
+      <p class="eyebrow">Our life, together</p>
+      <h1>Timeline</h1>
+      <p>From surviving JAMU to babies, weddings and new homes. Trips from the archive appear here automatically.</p>
+      <div class="row"><button class="btn primary" type="button" data-action="add-ms">+ Add a milestone</button></div>
     </section>
     <ol class="timeline">${rows}</ol>
   </div>`;
@@ -786,9 +791,10 @@ function viewIdeas() {
   const list = [...S.suggestions].sort((a, b) => (a.done === b.done ? (b.created_at || '').localeCompare(a.created_at || '') : a.done ? 1 : -1));
   return `
   <div class="stack-lg">
-    <section class="spread" style="align-items:end">
-      <div class="stack" style="gap:8px"><p class="eyebrow">Make it better</p><h1>Suggestions</h1><p class="muted">Ideas and fixes from the gang. Mark them done once they’re in.</p></div>
-      <button class="btn primary" type="button" data-action="suggest">+ New suggestion</button>
+    <section class="hero">
+      <p class="eyebrow">Make it better</p><h1>Suggestions</h1>
+      <p>Ideas and fixes from the gang. Mark them done once they’re in. (Feedback here is kinder than at a JAMU evaluation, promise.)</p>
+      <div class="row"><button class="btn primary" type="button" data-action="suggest">+ New suggestion</button></div>
     </section>
     ${list.length ? `<div class="stack">${list.map(s => `
       <article class="panel idea ${s.done ? 'done' : ''}">
@@ -828,7 +834,7 @@ function viewTrip(t, { after = false } = {}) {
     ${photosSection(t, photos)}
 
     <section class="panel stack">
-      <div class="spread"><div><p class="eyebrow">Who was there</p><h3 class="num">${(t.attendees || []).length} survivors</h3></div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol actually came</span>' : ''}</div>
+      <div class="spread"><div><p class="eyebrow">Who was there</p><h3 class="num">${(t.attendees || []).length} survivors</h3></div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol actually arrived</span>' : ''}</div>
       <div class="row">${(t.attendees || []).map(id => `<span class="row" style="gap:6px">${avatar(id, 'xs')}<span class="small">${esc(nameOf(id))}</span></span>`).join('') || '<span class="muted small">Not filled in. Use Edit to add who came.</span>'}</div>
     </section>
 
@@ -840,7 +846,7 @@ function viewTrip(t, { after = false } = {}) {
             <div style="min-width:0"><b>${esc(e.what || 'Something')}</b><br><span class="muted small">${esc(nameOf(e.payer))} paid · split ${(e.split || []).length} ways</span></div>
             <span class="amount">${kc(e.amount)}</span>
             <button class="btn sm ghost danger" type="button" data-action="del-exp" data-exp="${e.id}" aria-label="Delete expense">✕</button>
-          </div>`).join('') || '<p class="muted small">No expenses yet. Who bought the beer?</p>'}</div>
+          </div>`).join('') || '<p class="muted small">No expenses yet. Who bought the beer? (This budget, unlike the festival one, will actually balance.)</p>'}</div>
         <form id="exp-form" class="stack" data-trip="${t.id}" style="gap:10px;border-top:1px solid var(--line);padding-top:14px">
           <div class="grid2">
             <label>What<input name="what" id="exp-what" placeholder="Groceries, cottage, petrol…" required></label>
@@ -857,7 +863,7 @@ function viewTrip(t, { after = false } = {}) {
         <h2>Who sends money to whom</h2>
         ${transfers.length ? transfers.map(x => `
           <div class="transfer">${avatar(x.from, 'xs')}<b>${esc(nameOf(x.from))}</b><span class="muted">pays</span>${avatar(x.to, 'xs')}<b>${esc(nameOf(x.to))}</b><span class="amount" style="margin-left:auto">${kc(x.amount)}</span></div>`).join('')
-          : `<p class="muted">${ex.length ? 'Everyone is square. A miracle.' : 'Add expenses and the fewest possible payments will appear here.'}</p>`}
+          : `<p class="muted">${ex.length ? 'Everyone is square. Cleaner than any festival budget we ever handed in.' : 'Add expenses and the fewest possible payments will appear here.'}</p>`}
       </section>
     </div>
 
@@ -932,7 +938,7 @@ function tripForm(t, mode) {
       <div class="stack" style="gap:6px"><span class="small muted" style="font-weight:600">Who came</span>${memberChecks('attendees', t?.attendees || [])}</div>
       <label>Photo album link<input type="url" name="photos_url" id="f-photos" value="${esc(t?.photos_url)}" placeholder="https://drive.google.com/…"></label>
       <label>The story<textarea name="story" id="f-story" placeholder="What happened?">${esc(t?.story)}</textarea></label>
-      <label>Quotes (one per line)<textarea name="quotes" id="f-quotes" placeholder="&quot;I'm definitely coming next time!&quot; – Nikol">${esc(t?.quotes)}</textarea></label>
+      <label>Quotes (one per line)<textarea name="quotes" id="f-quotes" placeholder="&quot;Has anyone seen Nikol?&quot; – everyone, every trip">${esc(t?.quotes)}</textarea></label>
     ` : `
       <label>Good to know (what to bring, keys, check-in…)<textarea name="notes" id="f-notes">${esc(t?.notes)}</textarea></label>
     `}
@@ -1019,7 +1025,7 @@ document.addEventListener('click', async e => {
     const rsvp = { ...(t.rsvp || {}) };
     const who = b.dataset.who, val = b.dataset.val;
     if (rsvp[who] === val) delete rsvp[who]; else rsvp[who] = val;
-    const msg = who === 'nikol' && rsvp[who] === 'yes' ? 'Nikol is coming?! Somebody screenshot this. 📸'
+    const msg = who === 'nikol' && rsvp[who] === 'yes' ? 'Nikol says she’s coming. Bets are open on whether she arrives. 📸'
       : who === 'nikol' && rsvp[who] === 'love' ? 'As expected. We love you too, Nikol. 💌'
       : rsvp[who] === 'love' ? 'Love received. Absence noted. 💌' : null;
     return act(() => DB.update(t, { rsvp }), msg);
@@ -1136,7 +1142,7 @@ window.addEventListener('hashchange', () => { pendingDelete = null; if ($('.top'
 
 async function start() {
   if (!(await isLoggedIn())) return renderLogin();
-  app.innerHTML = '<div class="loading">Loading…</div>';
+  app.innerHTML = '<div class="loading">Loading… (still faster than the JAMU information system)</div>';
   try { await load(); }
   catch (e) {
     console.error(e);

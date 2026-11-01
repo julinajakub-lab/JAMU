@@ -1,15 +1,25 @@
-// The gang. Edit the "line" texts freely — they show on "The Gang" page.
+// The gang. Edit the texts freely. "jamu" = who they were at school, "line" = who they are.
 window.JAMU_MEMBERS = [
-  { id: 'adam',     name: 'Adam Harton',          short: 'Adam',     nick: '#MrBomBo',               line: 'Explosive entrances guaranteed.' },
-  { id: 'alzbeta',  name: 'Alžběta Konečná',      short: 'Bětka',    nick: '#kondomka',              line: 'Safety first. Always.' },
-  { id: 'dalibor',  name: 'Dalibor Chvátal',      short: 'Dalibor',  nick: '',                       line: 'Adopted from JevTech in 2016. Still waiting for a nickname.' },
-  { id: 'jakub',    name: 'Jakub Julina',         short: 'Jakub',    nick: 'Honza Peniz',            line: 'Built this website. Accepts tips and beer.' },
-  { id: 'julia',    name: 'Júlia Pecková',        short: 'Júlia',    nick: '#VedouciZajezdu',        line: 'Trip leader by nickname and by destiny.' },
-  { id: 'ladislav', name: 'Ladislav Horák',       short: 'Laďa',     nick: 'PPLko',                  line: 'Always delivers. Eventually.' },
-  { id: 'michaela', name: 'Michaela Zemčíková',   short: 'Míša',     nick: '#AlkoHolka',             line: 'Self-appointed head of the bar.' },
-  { id: 'nikol',    name: 'Nikol Vrbová',         short: 'Nikol',    nick: '#ŽádnýSexAUžAniNásilí',  line: 'Always coming. Never arrives. Sends so much love. 💌' },
-  { id: 'sylvie',   name: 'Sylvie Vojtová',       short: 'Sylvie',   nick: 'negativnisylvinka',      line: 'Will tell you it is going to rain. It will rain.' },
-  { id: 'viktoria', name: 'Viktória Kállayová',   short: 'Viki',     nick: '#PrdniSiDoSacku',        line: 'Says it exactly like it is.' }
+  { id: 'adam',     name: 'Adam Harton',        short: 'Adam',    nick: '#MrBomBo',              jamu: 'Film buff · Slovak delegation',
+    line: 'Name any film and Adamko has seen it, rated it and has an opinion about the director. The other half of our Slovak delegation.' },
+  { id: 'alzbeta',  name: 'Alžběta Konečná',    short: 'Bětka',   nick: '#kondomka',             jamu: 'World traveller',
+    line: 'Somewhere on the planet right now. Nobody is quite sure where, but when she randomly shows up it makes everyone’s day. Lives happily in her own world.' },
+  { id: 'dalibor',  name: 'Dalibor Chvátal',    short: 'Dalibor', nick: '',                      jamu: 'Adopted from JevTech',
+    line: 'Studied JevTech, got adopted by theatre management in 2016 and never managed to escape. Still waiting for a nickname.' },
+  { id: 'jakub',    name: 'Jakub Julina',       short: 'Jakub',   nick: 'Honza Peniz',           jamu: 'The law guy',
+    line: 'Law was his domain at JAMU. Reads the small print so the rest of us don’t have to. Also built this website.' },
+  { id: 'julia',    name: 'Júlia Pecková',      short: 'Júlia',   nick: '#VedouciZajezdu',       jamu: 'Head of SETKÁNÍ/ENCOUNTER 2019',
+    line: 'Led the 29th SETKÁNÍ/ENCOUNTER and all of us with it. Still the one who gets the gang moving. The nickname was earned.' },
+  { id: 'ladislav', name: 'Ladislav Horák',     short: 'Laďa',    nick: 'PPLko',                 jamu: 'Everyone’s favourite',
+    line: 'Friends with literally everyone. Every teacher, every porter, every person at JAMU knew and liked him. Still true.' },
+  { id: 'michaela', name: 'Michaela Zemčíková', short: 'Míša',    nick: '#AlkoHolka',            jamu: 'Head of Off-program 2019',
+    line: 'Former queen of every party. Now one of the gang’s first mums, and a brilliant one. We are all very proud of her.' },
+  { id: 'nikol',    name: 'Nikol Vrbová',       short: 'Nikol',   nick: '#ŽádnýSexAUžAniNásilí', jamu: 'Perfectionist-in-chief',
+    line: 'Every file ready, every deadline met, every document perfect. Arriving at the cottage is the one deadline she never makes.' },
+  { id: 'sylvie',   name: 'Sylvie Vojtová',     short: 'Sylvie',  nick: 'negativnisylvinka',     jamu: 'Head of Jury & Guests 2019',
+    line: 'Starts out negative and closed. Give her a minute: she has the biggest heart of us all and is one of the nicest people ever to walk this planet.' },
+  { id: 'viktoria', name: 'Viktória Kállayová', short: 'Viki',    nick: '#PrdniSiDoSacku',       jamu: 'Hyperactive · Slovak delegation',
+    line: 'Hyperactive, Slovak and impossible to keep up with. Has already done three things while you read this.' }
 ];
 
 // The one who is no longer with us. (She is fine.)
