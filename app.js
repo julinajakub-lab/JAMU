@@ -1033,7 +1033,7 @@ function relicsSection(t) {
         ${L.lead.map(x => `<p>${esc(x)}</p>`).join('')}
         <p class="named">${esc(L.named)}</p>
       </div>
-      <p class="letter-aside small">This is where our name comes from.</p>
+      <p class="letter-aside small">This is how our first tradition began.</p>
       <details class="letter-more"><summary>Read the rest of the letter</summary>
         <div class="letter-body" data-notr>
           ${L.rest.map(([h, x]) => `<p><b>${esc(h)}</b><br>${esc(x)}</p>`).join('')}

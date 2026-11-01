@@ -15,7 +15,7 @@ window.JAMU_RELICS = [{
     attendees: ['adam', 'sylvie', 'alzbeta', 'viktoria', 'ladislav', 'dalibor', 'jakub'],
     crowned: '',
     photos_url: 'https://drive.google.com/drive/folders/1fIETY0vPvvbzxZHQFEvcarPTfGyCE7vg',
-    story: 'Jaro 2020, karanténa. Kuba nám místo zprávy do chatu, kde by to zapadlo, poslal dlouhý mail. Že život umí být těžký a krutý a zvládá se jen s blízkými lidmi, a že těmi lidmi jsme pro něj my. A protože slova občas nestačí, vezme nás na vodu. Tak vzniklo Společenstvo inscenace na vodě, a s ním i naše jméno a první z našich tradic.\n\nČtyři noci, tři etapy a skoro 40 kilometrů po Dyji: ze Znojma do Krhovic, přes přírodní rezervaci Meandry Dyje do Hrádku a dál až do Hevlína. Kolem renesančního mlýna se čtyřmi koly, s ochutnávkou vína ve sklepní uličce v Hrádku a s rumem přivázaným za lodí, ať není teplý.',
+    story: 'Jaro 2020, karanténa. Kuba nám místo zprávy do chatu, kde by to zapadlo, poslal dlouhý mail. Napsal v něm, že život umí být těžký a krutý a zvládá se jen s blízkými lidmi, a že těmi lidmi jsme pro něj my. A protože slova občas nestačí, vezme nás na vodu. Tak vzniklo Společenstvo inscenace na vodě a s ním i první z našich tradic.\n\nČtyři noci, tři etapy a skoro 40 kilometrů po Dyji: ze Znojma do Krhovic, přes přírodní rezervaci Meandry Dyje do Hrádku a dál až do Hevlína. Kolem renesančního mlýna se čtyřmi koly, s ochutnávkou vína ve sklepní uličce v Hrádku a s rumem přivázaným za lodí, ať není teplý.',
     quotes: '„Synu, jsou jen tři věci, které opravdu potřebuješ na vodu. Teplé plavky, otvírák a nějakou pičovinu.“ (Zdeněk Julina)\n„Ahoj! (to je vodácký pozdrav, kdybste nevěděli O:-) )“\n„Ostatní spoluvodáky ráno zdravím panákem zelené, abychom sjednotili dech.“',
     relics: 'dyje-2020'
   },
