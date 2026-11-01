@@ -201,6 +201,10 @@ async function saveCourt(patch) {
 const planning = () => S.trips.find(t => t.status === 'planning');
 const tripSortKey = t => t.start || t.done_at || t.created_at || '';
 const doneTrips = () => S.trips.filter(t => t.status === 'done').sort((a, b) => tripSortKey(b).localeCompare(tripSortKey(a)));
+// A trip's life: planning → wrapped up (heir crowned, money still open) → archived (its king or queen closed the books).
+// Trips added to the archive by hand are archived from the start: no money talk.
+const isOpen = t => t.status === 'done' && !!t.done_at && !t.settled_at;
+const openTrip = () => doneTrips().filter(isOpen).sort((a, b) => (b.done_at || '').localeCompare(a.done_at || ''))[0];
 
 /* ---------------- the chronicle duty ----------------
    Whoever organised a trip writes its archive page: dates, place, photos and the story.
@@ -381,7 +385,7 @@ function allQuotes() {
 function todoBlock() {
   const m = me();
   const plan = planning();
-  const last = doneTrips()[0];
+  const last = openTrip();
   const items = [];
   const add = (text, btn) => items.push(`<li class="todo"><span>${text}</span>${btn}</li>`);
   if (!m) add('First, tell the site who you are, so your votes and photos get your name.', `<button class="btn primary sm" type="button" data-action="switch-me">Pick my name</button>`);
@@ -410,6 +414,7 @@ function todoBlock() {
   if (last) {
     add(`Do you have nice photos from <b>${esc(last.title)}</b>? Share them with everyone.`, `<button class="btn primary sm" type="button" data-action="share-photos" data-trip="${last.id}">Share photos</button>`);
     add(`Did you pay for something on <b>${esc(last.title)}</b>? Add it and the page works out who owes whom.`, `<button class="btn sm" type="button" data-action="add-exp" data-trip="${esc(last.id)}">Add an expense</button>`);
+    if (m && m === last.organiser) add(`♛ Once everyone has paid up for <b>${esc(last.title)}</b>, close the books and the trip moves to the archive.`, `<a class="btn sm" href="#after">Settle up</a>`);
   } else if (!(m && PAST_RULERS.includes(m) && !chroniclesClosed()[m])) {
     add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
   }
@@ -714,7 +719,7 @@ function tripRow(t) {
   return `
   <tr data-href="${href}">
     <td class="date">${esc(fmtRange(t.start, t.end))}</td>
-    <td><a class="trip-link" href="${href}">${esc(t.title || 'Untitled trip')}</a>${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
+    <td><a class="trip-link" href="${isOpen(t) ? '#after' : href}">${esc(t.title || 'Untitled trip')}</a>${isOpen(t) ? ' <span class="chip maybe">Settling up</span>' : ''}${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
     <td class="small"><span class="crown">♛</span> ${esc(nameOf(t.organiser))}${t.crowned ? ` <span class="muted">→ ${esc(nameOf(t.crowned))}</span>` : ''}</td>
     <td><div class="row" style="gap:6px"><div class="av-row">${(t.attendees || []).map(id => avatar(id, 'xs')).join('')}</div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol arrived!</span>' : ''}</div></td>
     <td class="small">${(() => { const n = S.photos.filter(p => p.trip_id === t.id).length; return n ? `${n} ${n === 1 ? 'photo' : 'photos'}` : safeUrl(t.photos_url) ? 'Album' : '<span class="muted">—</span>'; })()}</td>
@@ -983,8 +988,9 @@ function viewTrip(t, { after = false } = {}) {
   const att = t.attendees && t.attendees.length ? t.attendees : MEMBERS.map(m => m.id);
   const total = ex.reduce((s, e) => s + Number(e.amount || 0), 0);
   const transfers = settle(ex);
-  // Trips added to the archive by hand have no settling up; only wrapped-up trips (or ones with expenses) do.
-  const showMoney = after || !!t.done_at || ex.length > 0;
+  // Money only while the trip is open. Archived trips (books closed, or added by hand) don't talk about money.
+  const showMoney = isOpen(t);
+  after = after && showMoney;
   const photos = safeUrl(t.photos_url);
   const quotes = (t.quotes || '').split('\n').map(s => s.trim()).filter(Boolean);
   return `
@@ -1027,6 +1033,10 @@ function viewTrip(t, { after = false } = {}) {
           : `<p class="muted">${ex.length ? 'Everyone is square. Cleaner than any festival budget we ever handed in.' : 'Add expenses and the fewest possible payments will appear here.'}</p>`}
       </section>
     </div>
+    <section class="panel spread">
+      <div class="stack" style="gap:4px"><h3>All paid up?</h3><p class="muted small">When every payment above has been sent, ${esc(nameOf(t.organiser))} closes the books. The trip then moves to the archive, and the money talk ends.</p></div>
+      ${me() === t.organiser ? `<button class="btn gold" type="button" data-action="close-books" data-trip="${t.id}">♛ Close the books &amp; archive</button>` : `<span class="muted small">Only the trip’s king or queen can close the books.</span>`}
+    </section>
     ` : ''}
 
     <section class="panel stack">
@@ -1133,14 +1143,14 @@ function relicsSection(t) {
 }
 
 function viewAfter() {
-  const t = doneTrips().sort((a, b) => (b.done_at || '').localeCompare(a.done_at || '') || tripSortKey(b).localeCompare(tripSortKey(a)))[0];
+  const t = openTrip();
   if (!t) return `
     <div class="stack-lg">
       <section class="hero"><p class="eyebrow">After the trip</p><h1>Nothing to settle yet</h1></section>
       <div class="empty">
         <div class="big">🧾</div>
-        <h3>No finished trips yet</h3>
-        <p class="muted">When you get back from a trip, press “Wrap up” on the Next Trip page. Photos and expenses for it will show up here.</p>
+        <h3>No trip waiting to be settled</h3>
+        <p class="muted">When you get back from a trip, press “Wrap up” on the Next Trip page. Its photos and expenses show up here until its king or queen closes the books.</p>
         <a class="btn primary" href="#next">Go to Next Trip</a>
       </div>
     </div>`;
@@ -1660,6 +1670,12 @@ document.addEventListener('click', async e => {
     $$('.drawer-pane', box).forEach(x => { x.hidden = x.dataset.pane !== b.dataset.pane; });
     try { ls.set('jamu-drawer', b.dataset.pane); } catch {}
     return;
+  }
+  if (a === 'close-books') {
+    const t = trip(b.dataset.trip); if (!t || me() !== t.organiser) return;
+    const left = settle(S.expenses.filter(e => e.trip_id === t.id)).length;
+    if (left && !b.dataset.sure) { b.dataset.sure = '1'; b.textContent = tr('Payments still open. Close anyway?'); return; }
+    return act(async () => { await DB.update(t, { settled_at: new Date().toISOString() }); location.hash = '#trip-' + t.id; }, 'Books closed. The trip is in the archive ♛');
   }
   if (a === 'chronicle-done') {
     const m = me(); if (!m) return;

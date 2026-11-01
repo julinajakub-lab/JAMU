@@ -48,6 +48,17 @@ const exact = {
   'The captain’s picks': 'Kapitánův výběr',
   'The only one of us who ever uploaded his photos to our shared Drive (April 2019). Ten folders were made. One was filled.': 'Jediný z nás, kdo kdy nahrál fotky na náš společný Drive (duben 2019). Složek se založilo deset. Naplnila se jedna.',
   'His folder': 'Jeho složka',
+  'Once everyone has paid up for': 'Až všichni zaplatí za',
+  ', close the books and the trip moves to the archive.': ', uzavři účty a výlet se přesune do archivu.',
+  'Settle up': 'Vyrovnat účty',
+  'Settling up': 'Vyrovnává se',
+  'All paid up?': 'Všechno zaplaceno?',
+  'Only the trip’s king or queen can close the books.': 'Účty může uzavřít jen král nebo královna výletu.',
+  '♛ Close the books & archive': '♛ Uzavřít účty a archivovat',
+  'Payments still open. Close anyway?': 'Platby ještě nejsou vyrovnané. Přesto uzavřít?',
+  'Books closed. The trip is in the archive ♛': 'Účty uzavřeny. Výlet je v archivu ♛',
+  'No trip waiting to be settled': 'Žádný výlet nečeká na vyrovnání',
+  'When you get back from a trip, press “Wrap up” on the Next Trip page. Its photos and expenses show up here until its king or queen closes the books.': 'Až se vrátíte z výletu, klikni na stránce Další výlet na „Uzavřít a korunovat dalšího“. Fotky a výdaje tu pak budou, dokud král nebo královna výletu neuzavře účty.',
   // ---- login & frame
   'JAMU, class of 2016. Members only. Iva, if you’re reading this: the door is still open.': 'JAMU, ročník 2016. Jen pro členy. Ivo, jestli tohle čteš: dveře jsou pořád otevřené.',
   'Group password': 'Heslo party',
@@ -466,6 +477,7 @@ const exact = {
 };
 
 const patterns = [
+  [/^When every payment above has been sent, (.+) closes the books\. The trip then moves to the archive, and the money talk ends\.$/, 'Až budou odeslané všechny platby, uzavře účty $1. Výlet se pak přesune do archivu a o penězích už se nemluví.'],
   [/^Yes (\d+)$/, 'Ano $1'], [/^No (\d+)$/, 'Ne $1'], [/^Don’t care (\d+)$/, 'Je mi to fuk $1'],
   [/^(\d+) things to fix$/, (m, n) => `${n} ${plural(n, 'věc', 'věci', 'věcí')} k opravě`],
   [/^(\d+) of (\d+)$/, '$1 z $2'],
