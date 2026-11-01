@@ -487,7 +487,7 @@ function viewGang() {
     <section class="hero">
       <p class="eyebrow">10 active members · 1 no longer with us</p>
       <h1>The Gang</h1>
-      <p>Met at JAMU in 2016. It started with getting through school together. Today we know each other’s lives, and we keep showing up for them.</p>
+      <p>Welcome to the gang. We met at JAMU in 2016 and started out by getting through school together. Today we know each other’s lives and keep showing up for them. Here we all are, with our nicknames and how many trips each of us has made it to. Tap your own photo to change it.</p>
     </section>
     <section class="gang">
       ${cards}
@@ -615,7 +615,8 @@ function viewNext() {
   const c = court();
   if (!plan) return `
     <div class="stack-lg">
-      <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1></section>
+      <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1>
+        <p>${esc(`Welcome to the planning room. It’s empty for now, because nobody has started the next trip yet. Once ${nameOf(c.ruler)} does, this is where we vote on dates, say if we’re coming and work out how to get there.`)}</p></section>
       ${handover()}
       ${todoBlock()}
       <div class="empty">
@@ -663,7 +664,8 @@ function viewNext() {
     <section class="hero">
       <p class="eyebrow">Next trip · organised by ♛ ${esc(nameOf(plan.organiser))}</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
-      <p>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Date not decided yet. Vote below.'}</p>
+      <p>${esc(`Welcome to the planning room, where our next weekend together takes shape. ${nameOf(plan.organiser)} leads it and decides the dates, the cottage and the address. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.`)}</p>
+      <p class="hero-date">${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Date not decided yet. Vote below.'}</p>
       ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
 
@@ -732,7 +734,7 @@ function viewArchive() {
   <div class="stack-lg">
     <section class="hero">
       <p class="eyebrow">Every weekend we’ve shared</p><h1>The Archive</h1>
-      <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who came. Remember a trip that isn\u2019t here yet? Add it.</p>
+      <p>Welcome to the archive, our shared memory. Every trip we\u2019ve taken has its own page here, with photos, stories, quotes and who came. Each trip\u2019s king or queen writes its page, and anyone can add a story or a quote. Remember a trip that isn\u2019t here yet? Add it.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button></div>
     </section>
     ${done.length ? `<div class="table-wrap"><table class="sheet">
@@ -998,7 +1000,7 @@ function viewTimeline() {
     <section class="hero">
       <p class="eyebrow">Our life, together</p>
       <h1>Timeline</h1>
-      <p>From surviving JAMU to babies, weddings and new homes. Trips from the archive appear here automatically.</p>
+      <p>Welcome to our timeline. It isn\u2019t only trips, but everything that happened to us along the way: surviving JAMU, new jobs and homes, weddings and babies. When something big happens in your life, add it here so we all remember. Trips from the archive appear on their own.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-ms">+ Add a milestone</button></div>
     </section>
     <ol class="timeline">${rows}</ol>
@@ -1019,7 +1021,7 @@ function viewIdeas() {
   <div class="stack-lg">
     <section class="hero">
       <p class="eyebrow">Make it better</p><h1>Suggestions</h1>
-      <p>Ideas and fixes from the gang. Mark them done once they’re in. (Feedback here is kinder than at a JAMU evaluation, promise.)</p>
+      <p>Welcome to the suggestion box. This site is ours, so anyone can propose a fix or an idea, and mark it done once it\u2019s in. (Feedback here is kinder than at a JAMU evaluation, promise.)</p>
       <div class="row"><button class="btn primary" type="button" data-action="suggest">+ New suggestion</button></div>
     </section>
     ${list.length ? `<div class="stack">${list.map(s => `
@@ -1054,6 +1056,7 @@ function viewTrip(t, { after = false } = {}) {
     <section class="hero">
       <p class="eyebrow">${after ? 'Just got back from' : 'From the archive'}</p>
       <h1>${esc(t.title || 'Untitled trip')}</h1>
+      ${after ? '<p>Welcome back home. Share your photos, write down who paid for what, and the page works out who owes whom. Once everything is paid, the trip\u2019s king or queen closes the books and the trip moves to the archive.</p>' : ''}
       <p>${esc(fmtRange(t.start, t.end))}${t.place ? ' · ' + esc(t.place) : ''}</p>
       <p class="small"><span class="crown">♛</span> Organised by <b>${esc(member(t.organiser)?.name || '—')}</b>${t.crowned ? ` · crowned at the end: <b>${esc(member(t.crowned)?.name)}</b>` : ''}</p>
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${t.id}">Edit</button>${after ? `<a class="btn sm ghost" href="#trip-${esc(t.id)}">Permalink</a>` : ''}</div>
@@ -1202,7 +1205,8 @@ function viewAfter() {
   const t = openTrip();
   if (!t) return `
     <div class="stack-lg">
-      <section class="hero"><p class="eyebrow">After the trip</p><h1>Nothing to settle yet</h1></section>
+      <section class="hero"><p class="eyebrow">After the trip</p><h1>Nothing to settle yet</h1>
+        <p>Welcome back home. This page is for the days right after a trip: share your photos, write down who paid for what, and the page works out who owes whom. Once everything is paid, the trip\u2019s king or queen closes the books and the trip moves to the archive.</p></section>
       <div class="empty">
         <div class="big">🧾</div>
         <h3>No trip waiting to be settled</h3>
