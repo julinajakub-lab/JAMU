@@ -123,7 +123,7 @@ function seedDemo() {
   const fri = (mo, d) => `${y + 1}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const o1 = uid(), o2 = uid(), o3 = uid();
   return [
-    { id: t, collection: 'trips', created_at: now, status: 'planning', title: 'Spring cottage weekend (example)', organiser: 'ladislav',
+    { id: t, collection: 'trips', created_at: now, status: 'planning', title: 'Spring cottage weekend (example)', organiser: 'julia',
       place: 'Chata u Lesa (example)', address: 'Hlubočky 123, 783 61 Hlubočky', notes: 'Bring: slippers, a towel, a dish to share.\nKeys are under the gnome.', rsvp: { ladislav: 'yes', julia: 'yes', jakub: 'yes', nikol: 'love', sylvie: 'maybe', michaela: 'yes' } },
     { id: o1, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 17), end: fri(4, 19), votes: { ladislav: 'yes', julia: 'yes', jakub: 'maybe', nikol: 'yes', michaela: 'yes' } },
     { id: o2, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 24), end: fri(4, 26), votes: { ladislav: 'yes', julia: 'no', jakub: 'yes', sylvie: 'yes', adam: 'yes', viktoria: 'yes' } },
@@ -192,6 +192,7 @@ const openTrip = () => doneTrips().filter(isOpen).sort((a, b) => (b.done_at || '
    Whoever organised a trip writes its archive page: dates, place, photos and the story.
    Past monarchs add their old trips themselves; from now on every wrapped-up trip lands on its organiser. */
 const PAST_RULERS = window.JAMU_PAST_RULERS || [];
+const LAST_TRIP = window.JAMU_LAST_TRIP || {};
 function chronicleGaps(t) {
   const gaps = [];
   if (!t.start) gaps.push('dates');
@@ -378,6 +379,8 @@ function todoBlock() {
       const ready = preparedFor(m);
       if (ready) add(`♛ Your trip <b>${esc(ready.prepared.title)}</b> is written up from the old emails and the Drive. Check it, fix what’s wrong and add it to the archive.`,
         `<button class="btn primary sm" type="button" data-action="add-prepared" data-relic="${esc(ready.id)}">Check and add</button>`);
+      else if (LAST_TRIP.organiser === m && !mine.some(t => (t.start || '') >= LAST_TRIP.year)) add(`♛ ${LAST_TRIP.title} just ended and you led it, so its archive page is yours to write: when, where, the photos and the story. ${nameOf(LAST_TRIP.crowned)} already wears the crown.`,
+        `<button class="btn primary sm" type="button" data-action="add-my-trip">Write it up</button>`);
       else if (!mine.length) add('♛ You’ve worn the crown before, so the chronicle of your reign is yours to write. Add the trip you organised: when, where, the photos and what happened.',
         `<button class="btn primary sm" type="button" data-action="add-my-trip">Add my trip</button>`);
       else add('♛ Did you organise any other trip before this website existed? Add it too, or tell us that was all.',
@@ -388,7 +391,7 @@ function todoBlock() {
     const opts = S.options.filter(o => o.trip_id === plan.id);
     if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<a class="btn primary sm" href="#next">Vote on dates</a>`);
     if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<a class="btn primary sm" href="#next">Answer</a>`);
-    if (m && goingTo(plan).includes(m) && !tasksOf(plan).some(x => x.who.includes(m))) add(`Take a task for <b>${esc(plan.title)}</b>: shopping, a meal, driving…`, `<a class="btn primary sm" href="#roles" data-action="scroll-roles">Pick a task</a>`);
+    if (m && goingTo(plan).includes(m) && !tasksOf(plan).some(x => x.who.includes(m))) add(`Take a task for <b>${esc(plan.title)}</b>: food, cars or board games.`, `<a class="btn primary sm" href="#roles" data-action="scroll-roles">Pick a task</a>`);
     if (m && m === plan.organiser) {
       const nextStep = crownSteps(plan).find(x => !x.done && !x.later);
       if (nextStep) add(`♛ You’re leading <b>${esc(plan.title)}</b>. Next step:`, `<a class="btn primary sm" href="#next">${nextStep.text}</a>`);
@@ -556,13 +559,9 @@ const RSVP = [['yes', 'Coming'], ['maybe', 'Maybe'], ['no', 'Can’t'], ['love',
    The king or queen runs the preparations; everyone else votes, answers and takes a task.
    Tasks live on the planning trip as tasks: [{ id, label, who: [] }]. Until someone touches them, the defaults below apply. */
 const DEFAULT_TASKS = [
-  { id: 'shop', label: 'Big shopping' },
-  { id: 'fri-dinner', label: 'Friday dinner' },
-  { id: 'sat-breakfast', label: 'Saturday breakfast' },
-  { id: 'sat-dinner', label: 'Saturday dinner' },
-  { id: 'drinks', label: 'Drinks' },
-  { id: 'cars', label: 'Driving (car with free seats)' },
-  { id: 'fun', label: 'Games & music' }
+  { id: 'food', label: 'Food' },
+  { id: 'cars', label: 'Cars & lifts' },
+  { id: 'games', label: 'Board games' }
 ];
 const tasksOf = t => (Array.isArray(t.tasks) ? t.tasks : DEFAULT_TASKS).map(x => ({ ...x, who: x.who || [] }));
 const goingTo = t => MEMBERS.filter(m => ['yes', 'maybe'].includes((t.rsvp || {})[m.id])).map(m => m.id);
@@ -634,7 +633,7 @@ function rolesPanel(t) {
         ${!m ? '<p class="muted small">Tell us who you are (top right) to take a task.</p>' : ''}
         <div class="tasks">${rows || '<p class="muted">No tasks yet.</p>'}</div>
         <form id="task-form" class="row" style="align-items:end">
-          <label style="flex:1 1 220px">New task<input name="label" maxlength="60" placeholder="e.g. Firewood, Sunday lunch…" required></label>
+          <label style="flex:1 1 220px">New task<input name="label" maxlength="60" placeholder="e.g. Firewood" required></label>
           <button class="btn" type="submit">Add task</button>
         </form>
       </section>
@@ -698,7 +697,7 @@ function viewNext() {
     <ol class="howto" aria-label="How this page works">
       <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
       <li><b>Say if you\u2019re coming</b><span>One tap next to your name. You can change it any time.</span></li>
-      <li><b>Take a task</b><span>Shopping, cooking a meal, driving\u2026 Each of us takes at least one.</span></li>
+      <li><b>Take a task</b><span>Food, cars or board games. Each of us takes at least one.</span></li>
       <li><b>Get there</b><span>On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
       <li><b>Wrap it up</b><span>Back home, press the button at the bottom to crown the next monarch and share photos.</span></li>
     </ol>
@@ -1730,7 +1729,8 @@ document.addEventListener('click', async e => {
   }
   if (a === 'add-past' || a === 'add-my-trip') {
     const m = me(); if (a === 'add-my-trip' && !m) return pickMe(true);
-    const cfg = tripSheet(null, 'past', a === 'add-my-trip' ? { organiser: m } : {});
+    const fresh = a === 'add-my-trip' && LAST_TRIP.organiser === m && !tripsBy(m).some(t => (t.start || '') >= LAST_TRIP.year);
+    const cfg = tripSheet(null, 'past', fresh ? { title: LAST_TRIP.title, organiser: m, crowned: LAST_TRIP.crowned, start: '', end: LAST_TRIP.end, attendees: MEMBERS.map(x => x.id).filter(id => id !== LAST_TRIP.crowned) } : a === 'add-my-trip' ? { organiser: m } : {});
     return openSheet({ ...cfg, onSave: async v => {
       const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'done' });
       await load(); render(); toast(a === 'add-my-trip' ? 'Your reign is in the chronicle ♛' : 'Added to the archive.', undo(rec));
@@ -1802,7 +1802,7 @@ document.addEventListener('click', async e => {
     }
     const taking = !x.who.includes(m);
     x.who = taking ? [...x.who, m] : x.who.filter(id => id !== m);
-    return act(() => DB.update(t, { tasks }), taking ? (x.id === 'drinks' ? 'Drinks are yours. #AlkoHolka approves. 🍷' : 'It’s yours. Thank you!') : 'Task dropped. Someone else can take it.');
+    return act(() => DB.update(t, { tasks }), taking ? 'It’s yours. Thank you!' : 'Task dropped. Someone else can take it.');
   }
   if (a === 'rsvp') {
     const t = planning(); if (!t) return;

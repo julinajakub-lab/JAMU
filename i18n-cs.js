@@ -441,8 +441,7 @@ const exact = {
   'Change album link': 'Změnit odkaz na album', 'Link the album': 'Připojit album', '+ Add expense': '+ Přidat výdaj',
   'Trip file created. Now propose some dates!': 'Výlet je založený. Teď navrhni termíny!', 'Trip file created. The gang can see it now.': 'Výlet je založený. Parta ho už vidí.',
   // ---- who does what while preparing a trip
-  'Big shopping': 'Velký nákup', 'Friday dinner': 'Páteční večeře', 'Saturday breakfast': 'Sobotní snídaně', 'Saturday dinner': 'Sobotní večeře',
-  'Drinks': 'Pití', 'Driving (car with free seats)': 'Auto (kdo veze a má volná místa)', 'Games & music': 'Hry a hudba',
+  'Food': 'Jídlo', 'Cars & lifts': 'Auta a odvoz', 'Board games': 'Deskovky',
   'Propose a few weekends to vote on': 'Navrhnout pár víkendů k hlasování', 'Pick the final date': 'Vybrat konečný termín',
   'Book the cottage and add the address': 'Zarezervovat chatu a doplnit adresu',
   'Write what to bring and how to get in under “Good to know”': 'Do „Dobré vědět“ napsat, co s sebou a jak se dostat dovnitř',
@@ -459,17 +458,17 @@ const exact = {
   'Tasks': 'Úkoly', 'Who takes care of what': 'Kdo co zajistí', 'Tap to take a task. Two people can share one.': 'Úkol si vezmeš jedním ťuknutím. Klidně i ve dvou.',
   'Tell us who you are (top right) to take a task.': 'Nahoře vpravo řekni, kdo jsi, a pak si můžeš vzít úkol.',
   'Nobody yet': 'Zatím nikdo', 'Drop it': 'Pustit', 'I’ll do it': 'Beru si to', 'Remove this task': 'Odebrat úkol',
-  'No tasks yet.': 'Zatím žádné úkoly.', 'New task': 'Nový úkol', 'e.g. Firewood, Sunday lunch…': 'např. Dříví na oheň, nedělní oběd…', 'Add task': 'Přidat úkol',
-  'Take a task': 'Vezmi si úkol', 'Shopping, cooking a meal, driving… Each of us takes at least one.': 'Nákup, vaření jednoho jídla, odvoz… Každý si vezme aspoň jeden.',
-  'Take a task for': 'Vezmi si úkol na', ': shopping, a meal, driving…': ': nákup, jedno jídlo, odvoz…', 'Pick a task': 'Vybrat úkol',
+  'No tasks yet.': 'Zatím žádné úkoly.', 'New task': 'Nový úkol', 'e.g. Firewood': 'např. Dříví na oheň', 'Add task': 'Přidat úkol',
+  'Take a task': 'Vezmi si úkol', 'Food, cars or board games. Each of us takes at least one.': 'Jídlo, auta nebo deskovky. Každý si vezme aspoň jeden.',
+  'Take a task for': 'Vezmi si úkol na', ': food, cars or board games.': ': jídlo, auta nebo deskovky.', 'Write it up': 'Sepsat', 'Pick a task': 'Vybrat úkol',
   '♛ You’re leading': '♛ Vedeš', '. Next step:': '. Další krok:',
   'Task added': 'Úkol přidán', 'Task removed': 'Úkol odebrán', 'It’s yours. Thank you!': 'Je tvůj. Díky!',
   'Task dropped. Someone else can take it.': 'Úkol je volný. Může si ho vzít někdo jiný.',
-  'Drinks are yours. #AlkoHolka approves. 🍷': 'Pití je tvoje. #AlkoHolka schvaluje. 🍷',
   'Added to the archive.': 'Přidáno do archivu.', 'Expense added.': 'Výdaj přidán.', 'Undo': 'Vrátit', 'Undone': 'Vráceno'
 };
 
 const patterns = [
+  [/^♛ (.+) just ended and you led it, so its archive page is yours to write: when, where, the photos and the story\. (.+) already wears the crown\.$/, '♛ $1 právě skončil a vedl jsi ho ty, takže jeho stránku do archivu píšeš ty: kdy, kde, fotky a příběh. Korunu už nosí $2.'],
   [/^When every payment above has been sent, (.+) closes the books\. The trip then moves to the archive, and the money talk ends\.$/, 'Až budou odeslané všechny platby, uzavře účty $1. Výlet se pak přesune do archivu a o penězích už se nemluví.'],
   [/^Yes (\d+)$/, 'Ano $1'], [/^No (\d+)$/, 'Ne $1'], [/^Don’t care (\d+)$/, 'Je mi to fuk $1'],
   [/^(\d+) things to fix$/, (m, n) => `${n} ${plural(n, 'věc', 'věci', 'věcí')} k opravě`],

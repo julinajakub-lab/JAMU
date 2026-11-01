@@ -37,3 +37,7 @@ window.JAMU_DEFAULT_COURT = { ruler: 'julia', heir: '' };
 // Everyone who has worn the crown before this website existed (since the first trip, Dyje on boats, 2020).
 // Each of them owes the archive the page of the trip(s) they organised. Júlia and Dalibor haven't reigned yet.
 window.JAMU_PAST_RULERS = ['jakub', 'adam', 'alzbeta', 'ladislav', 'michaela', 'nikol', 'sylvie', 'viktoria'];
+
+// The trip that just ended (autumn 2026). Laďa led it; Júlia skipped it (so she starts unticked in 'Who came') but took the crown by letter.
+// Home asks Laďa to write its archive page until a 2026 trip of his is in the archive.
+window.JAMU_LAST_TRIP = { organiser: 'ladislav', title: 'Podzimní výlet 2026', year: '2026', end: '2026-11-01', crowned: 'julia' };
