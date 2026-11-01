@@ -422,6 +422,7 @@ function viewGang() {
           <p class="nick ${m.nick ? '' : 'unset'}">${m.nick ? esc(m.nick) : 'nickname not set yet'}</p>
           ${m.jamu ? `<p class="jamu-role">${esc(m.jamu)}</p>` : ''}
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
+          ${(m.links || []).length ? `<ul class="member-links">${m.links.map(l => `<li><a target="_blank" rel="noopener" href="${esc(l.url)}">${esc(l.title)} ↗</a></li>`).join('')}</ul>` : ''}
           <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>arrivals: pending</span>' : ''}</div>
         </div>
       </article>`;
@@ -764,7 +765,8 @@ const KINDS = {
 function viewTimeline() {
   const items = [
     { date: '2016-09-01', approx: true, kind: 'gang', title: 'We meet at JAMU', label: 'Where it all began', note: 'Theatre management, class of 2016. Dalibor joins from JevTech and gets adopted. Nobody knows yet what they signed up for.', fixed: true },
-    { date: '2017-04-01', approx: true, kind: 'encounter', title: 'The 27th SETKÁNÍ/ENCOUNTER', label: 'First festival', note: 'Freshmen. We run errands, carry things, sleep very little and learn what an international theatre festival really costs (sleep, mostly).', fixed: true },
+    { date: '2017-04-01', approx: true, kind: 'encounter', title: 'The 27th SETKÁNÍ/ENCOUNTER', label: 'First festival', note: 'Freshmen. We run errands, carry things, sleep very little and learn what an international theatre festival really costs (sleep, mostly).', fixed: true,
+      links: [{ title: 'The 2017 Off-program application form (jamu.cz, PDF)', url: 'https://www.jamu.cz/documents/aktuality/ENC17_offprogram_prihlaska_vs02.pdf' }] },
     { date: '2018-04-01', approx: true, kind: 'encounter', title: 'The 28th SETKÁNÍ/ENCOUNTER', label: 'Second year', note: 'More responsibility, same amount of sleep. We watch the older years and quietly think: next year it\u2019s us.', fixed: true },
     { date: '2019-04-02', approx: true, kind: 'encounter', title: 'We run the 29th SETKÁNÍ/ENCOUNTER', label: 'Our masterpiece', who: ['julia', 'michaela', 'sylvie'], note: 'Our year as the main organisers, with Júlia as head of the festival. Theatre schools from all over Europe in Brno, and a team that came out of it as a family.', fixed: true,
       links: [
