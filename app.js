@@ -25,20 +25,14 @@ const kc = n => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 0 }).for
 const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
 
 function parseDate(s) { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
-function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString(locale(), { day: 'numeric', month: lang() === 'cs' ? 'long' : 'short', year: 'numeric' }) : ''; }
+function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' }) : ''; }
 function fmtRange(a, b) {
   const s = parseDate(a), e = parseDate(b);
   if (!s) return tr('Date not set');
   if (!e || a === b) return fmtDate(a);
-  if (lang() === 'cs') {
-    const dm = d => d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
-    if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${s.getDate()}.–${fmtDate(b)}`;
-    if (s.getFullYear() === e.getFullYear()) return `${dm(s)} – ${fmtDate(b)}`;
-    return `${fmtDate(a)} – ${fmtDate(b)}`;
-  }
-  const day = d => d.getDate(), mon = d => d.toLocaleDateString('en-GB', { month: 'short' });
-  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${day(s)}–${day(e)} ${mon(e)} ${e.getFullYear()}`;
-  if (s.getFullYear() === e.getFullYear()) return `${day(s)} ${mon(s)} – ${day(e)} ${mon(e)} ${e.getFullYear()}`;
+  const dm = d => d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
+  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${s.getDate()}.–${fmtDate(b)}`;
+  if (s.getFullYear() === e.getFullYear()) return `${dm(s)} – ${fmtDate(b)}`;
   return `${fmtDate(a)} – ${fmtDate(b)}`;
 }
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((d - t) / 864e5); }
@@ -53,14 +47,6 @@ function avatar(id, size = '') {
 function profilePhoto(id) {
   const list = (S.profiles || []).filter(p => p.member === id).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   return list[0]?.path || '';
-}
-function memberOptions(selected, { blank = false } = {}) {
-  return (blank ? `<option value="">— not decided —</option>` : '') +
-    MEMBERS.map(m => `<option value="${m.id}" ${m.id === selected ? 'selected' : ''}>${esc(m.name)}${m.nick ? ' · ' + esc(m.nick) : ''}</option>`).join('');
-}
-function memberChecks(name, checked = []) {
-  return `<div class="checks">${MEMBERS.map(m => `
-    <label class="check"><input type="checkbox" name="${name}" value="${m.id}" ${checked.includes(m.id) ? 'checked' : ''}>${esc(m.short)}${m.id === 'nikol' ? ' <span class="muted">(really?)</span>' : ''}</label>`).join('')}</div>`;
 }
 
 let toastTimer;
@@ -80,11 +66,10 @@ function toast(msg, action) {
 }
 
 /* ---------------- languages ---------------- */
-// The page is written in English and translated after rendering. Czech texts live in i18n-cs.js.
+// The site is Czech only. Copy is written in English here and translated after rendering; Czech texts live in i18n-cs.js.
 // {sk|cz} in a translation shows the Slovak word with a small ⓘ that reveals the Czech one.
 const I18N = window.JAMU_I18N || {};
-const lang = () => { const l = ls.get('jamu-lang'); return l === 'en' || !I18N.cs ? 'en' : 'cs'; };
-const locale = () => (lang() === 'cs' ? 'cs-CZ' : 'en-GB');
+const lang = () => (I18N.cs ? 'cs' : 'en');
 function trRaw(s) {
   const d = lang() === 'en' ? null : I18N[lang()];
   if (!d || !s) return null;
@@ -118,9 +103,6 @@ function translateDOM(root) {
       const v = el.getAttribute(a); if (v) { const t = trRaw(v.trim()); if (t != null) el.setAttribute(a, plainSk(t)); }
     }
   });
-}
-function langSwitch() {
-  return `<button class="lang" type="button" data-action="lang" title="Language / Jazyk" data-notr>${lang() === 'cs' ? '<b>CZ</b> · EN' : 'CZ · <b>EN</b>'}</button>`;
 }
 
 /* ---------------- data layer ---------------- */
@@ -253,7 +235,6 @@ function renderLogin() {
   app.innerHTML = `
   <div class="login">
     <div class="box">
-      <div class="login-lang">${langSwitch()}</div>
       <div class="mark" aria-hidden="true">SI</div>
       <div class="stack" style="gap:4px">
         <h1 style="font-size:1.5rem">Společenstvo Inscenace</h1>
@@ -354,7 +335,6 @@ function shell(active, content) {
     <div class="wrap">
       <a class="logo" href="#home"><span class="mark" aria-hidden="true">SI</span><span class="name">Společenstvo Inscenace</span></a>
       <nav class="nav" aria-label="Main">${NAV.map(([k, l]) => `<a href="#${k}" class="${active === k ? 'on' : ''}">${l}</a>`).join('')}</nav>
-      ${langSwitch()}
       <button class="me" type="button" data-action="switch-me" title="Change who you are">${m ? avatar(m, 'xs') + ' ' + esc(nameOf(m)) : 'Who are you?'}</button>
     </div>
   </header>
@@ -430,8 +410,9 @@ function viewHome() {
   const c = court();
   const plan = planning();
   const done = doneTrips();
-  const years = new Date().getFullYear() - 2016;
-  const nikolCame = done.filter(t => (t.attendees || []).includes('nikol')).length;
+  const years = new Date().getFullYear() - 2019; // graduated through ENCOUNTER 2019
+  const together = new Date().getFullYear() - 2016;
+  const nikolCame = Math.max(1, done.filter(t => (t.attendees || []).includes('nikol')).length); // she came once, around 2021
   const quotes = allQuotes();
   const q = quotes.length ? quotes[Math.floor(Math.random() * quotes.length)] : { text: FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)] };
   let nextBlock;
@@ -469,17 +450,20 @@ function viewHome() {
 
     <div class="home-intro">
     <section class="letter">
-      <p class="eyebrow">Welcome, gang</p>
+      <p class="eyebrow">A letter to start with</p>
       <div class="letter-body">
-        <p>This is our own little corner of the internet.</p>
-        <p>We met at JAMU in 2016, survived more deadlines than anyone should (and one whole international festival), and somewhere along the way became family. School brought us together. What we share keeps us there: new jobs and new homes, babies, worries, big questions about the world and small ones about dinner. Every time we sit at a cottage table, someone says “we should write this down”. So here it is: one place for everything that holds us together.</p>
+        <p class="greeting">Hi, friends,</p>
+        <p>we met at JAMU in 2016. Deadlines, long nights over schoolwork and one whole international festival brought us together. Ten years later, classmates have become family. We are there for each other’s new jobs and new homes, babies and worries, big questions about the world and small ones about dinner.</p>
+        <p>I love you very much, and I know we all love each other, even when we only manage to meet a few times a year.</p>
+        <p class="letter-sep" aria-hidden="true">· · ·</p>
+        <p>So why this page? So our trips are easier to plan and nothing from them gets lost. Until now everything was scattered across chats, spreadsheets and Drive folders. Now it’s all in one place:</p>
         <ul class="letter-list">
           <li><a href="#next"><b>Plan the next trip.</b></a> Vote on dates, say if you’re coming, and find the cottage with one tap.</li>
           <li><a href="#archive"><b>Remember the old ones.</b></a> Every trip with its photos, stories and the quotes we’ll never live down.</li>
           <li><a href="#after"><b>Settle up without awkward messages.</b></a> Log who paid for what and the page works out who owes whom.</li>
         </ul>
         <p>It’s ours, so make it better. If something is missing or wrong, press “Suggest an edit” in the corner.</p>
-        <p class="signature">Built for us with <span class="heart">♥</span><br><span>Jakub (Honza Peniz)</span></p>
+        <p class="signature">Built for us with <svg class="heart" viewBox="0 0 24 24" aria-label="love" role="img"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.7 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg><br><span>Jakub (Honza Peniz)</span></p>
       </div>
     </section>
 
@@ -503,14 +487,14 @@ function viewHome() {
       <div class="section-head"><h2>By the numbers</h2></div>
       <div class="kpis">
         <div class="kpi"><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
-        <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU</span></div>
-        <div class="kpi"><b>${done.filter(t => t.crowned).length}</b><span class="muted small">crowns handed over</span></div>
-        <div class="kpi"><b>${nikolCame}/${done.length}</b><span class="muted small">trips Nikol arrived at</span></div>
+        <div class="kpi"><b>${together}</b><span class="muted small">years since we met at JAMU</span></div>
+        <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU (graduation after ENCOUNTER 2019)</span></div>
+        <div class="kpi"><b>${nikolCame}×</b><span class="muted small">Nikol arrived. About five years ago, and nobody remembers which trip.</span></div>
       </div>
     </section>
 
     <section class="stack quote-block" style="gap:8px">
-      <p class="eyebrow">Overheard at a cottage</p>
+      <p class="eyebrow">From our memories</p>
       <p class="quote">${esc(q.text)}</p>
       ${q.trip ? `<p class="muted small">from <a href="#trip-${esc(q.trip.id)}">${esc(q.trip.title)}</a></p>` : ''}
     </section>
@@ -676,7 +660,7 @@ function viewArchive() {
   <div class="stack-lg">
     <section class="hero">
       <p class="eyebrow">Every weekend we’ve shared</p><h1>The Archive</h1>
-      <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who paid for what. Remember a trip that isn\u2019t here yet? Add it.</p>
+      <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who came. Remember a trip that isn\u2019t here yet? Add it.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button></div>
     </section>
     ${done.length ? `<div class="table-wrap"><table class="sheet">
@@ -927,7 +911,7 @@ function viewTimeline() {
       <li class="tl-item ${m.kind === 'trip' ? 'is-trip' : ''}">
         <span class="tl-dot" aria-hidden="true">${k[1]}</span>
         <div class="tl-card">
-          <p class="small muted">${esc(m.approx ? (parseDate(m.date)?.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }) || '') : fmtDate(m.date))} · ${esc(k[0])}</p>
+          <p class="small muted">${esc(m.approx ? (parseDate(m.date)?.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' }) || '') : fmtDate(m.date))} · ${esc(k[0])}</p>
           <h3>${m.trip ? `<a href="#trip-${esc(m.trip.id)}">${esc(m.title)}</a>` : esc(m.title)}</h3>
           ${m.label ? `<span class="badge">${esc(m.label)}</span>` : ''}
           ${m.note ? `<p class="small">${esc(m.note)}</p>` : ''}
@@ -1633,7 +1617,6 @@ document.addEventListener('click', async e => {
   const opt = id => S.options.find(o => o.id === id);
 
   if (a === 'switch-me') return pickMe(true);
-  if (a === 'lang') { ls.set('jamu-lang', lang() === 'cs' ? 'en' : 'cs'); return $('.top') ? render() : renderLogin(); }
   if (a === 'logout') return logout();
   if (a === 'copy') {
     try { await navigator.clipboard.writeText(b.dataset.text); toast('Address copied'); }
