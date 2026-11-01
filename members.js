@@ -3,7 +3,7 @@
 window.JAMU_MEMBERS = [
   { id: 'adam',     name: 'Adam Harton',        short: 'Adam',    nick: '#MrBomBo',              jamu: 'Film buff · Slovak delegation',
     line: 'Name any film and Adamko has seen it, rated it and has an opinion about the director. The other half of our Slovak delegation.' },
-  { id: 'alzbeta',  name: 'Alžběta Konečná',    short: 'Bětka',   nick: '#kondomka',             jamu: 'World traveller',
+  { id: 'alzbeta',  name: 'Alžběta Konečná',    short: 'Bětka',   nick: '#Kondomka',             jamu: 'World traveller',
     line: 'Somewhere on the planet right now. Nobody is quite sure where, but whenever she turns up, it’s the best surprise of the day. Lives happily in her own world.' },
   { id: 'dalibor',  name: 'Dalibor Chvátal',    short: 'Dalibor', nick: '',                      jamu: 'Adopted from JevTech',
     line: 'Studied JevTech, got adopted by theatre management in 2016 and we’re never letting him go. Still waiting for a nickname.' },
