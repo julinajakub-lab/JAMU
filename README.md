@@ -6,7 +6,7 @@ The private website of Společenstvo Inscenace, the JAMU class of 2016: plan cot
 - **Home**: the reigning monarch and heir, the next trip with a countdown, stats, a random quote.
 - **The Gang**: everyone's card with nicknames, trip counts and crowns.
 - **Next Trip**: cottage address with navigation (Google Maps / Mapy.cz), date voting, who's coming, and the crowning ceremony at the end.
-- **Archive**: past trips as tickets. Anyone can add one.
+- **Archive**: past trips in one table. Anyone can add one.
 - **After the Trip**: photo album link, who paid for what, and who owes whom.
 
 ## How it's built
