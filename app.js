@@ -25,11 +25,17 @@ const kc = n => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 0 }).for
 const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
 
 function parseDate(s) { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
-function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
+function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString(locale(), { day: 'numeric', month: lang() === 'cs' ? 'long' : 'short', year: 'numeric' }) : ''; }
 function fmtRange(a, b) {
   const s = parseDate(a), e = parseDate(b);
-  if (!s) return 'Date not set';
+  if (!s) return tr('Date not set');
   if (!e || a === b) return fmtDate(a);
+  if (lang() === 'cs') {
+    const dm = d => d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
+    if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${s.getDate()}.–${fmtDate(b)}`;
+    if (s.getFullYear() === e.getFullYear()) return `${dm(s)} – ${fmtDate(b)}`;
+    return `${fmtDate(a)} – ${fmtDate(b)}`;
+  }
   const day = d => d.getDate(), mon = d => d.toLocaleDateString('en-GB', { month: 'short' });
   if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${day(s)}–${day(e)} ${mon(e)} ${e.getFullYear()}`;
   if (s.getFullYear() === e.getFullYear()) return `${day(s)} ${mon(s)} – ${day(e)} ${mon(e)} ${e.getFullYear()}`;
@@ -61,8 +67,52 @@ let toastTimer;
 function toast(msg) {
   let t = $('.toast');
   if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
-  t.textContent = msg; t.hidden = false;
+  t.textContent = tr(msg); t.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+}
+
+/* ---------------- languages ---------------- */
+// The page is written in English and translated after rendering. Czech texts live in i18n-cs.js.
+// {sk|cz} in a translation shows the Slovak word with a small ⓘ that reveals the Czech one.
+const I18N = window.JAMU_I18N || {};
+const lang = () => { const l = ls.get('jamu-lang'); return l === 'en' || !I18N.cs ? 'en' : 'cs'; };
+const locale = () => (lang() === 'cs' ? 'cs-CZ' : 'en-GB');
+function trRaw(s) {
+  const d = lang() === 'en' ? null : I18N[lang()];
+  if (!d || !s) return null;
+  if (Object.prototype.hasOwnProperty.call(d.exact, s)) return d.exact[s];
+  for (const [re, rep] of d.patterns) if (re.test(s)) return s.replace(re, rep);
+  return null;
+}
+const SK = /\{([^|{}]+)\|([^{}]+)\}/g;
+const plainSk = s => s.replace(SK, '$1');
+const tr = s => plainSk(trRaw(s) ?? s);
+function translateDOM(root) {
+  if (lang() === 'en' || !root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => (n.parentElement && /^(SCRIPT|STYLE|TEXTAREA)$/.test(n.parentElement.tagName)) || n.parentElement?.closest('[data-notr]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+  });
+  const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const n of nodes) {
+    const v = n.nodeValue, key = v.replace(/\s+/g, ' ').trim();
+    if (!key) continue;
+    const t = trRaw(key); if (t == null) continue;
+    const lead = v.match(/^\s*/)[0], trail = v.match(/\s*$/)[0];
+    if (!SK.test(t)) { n.nodeValue = lead + t + trail; continue; }
+    SK.lastIndex = 0;
+    const span = document.createElement('span');
+    span.innerHTML = esc(lead + t + trail).replace(SK, (m, sk, cz) => `<span class="sk" tabindex="0" data-cz="${cz}">${sk}</span>`);
+    n.replaceWith(...span.childNodes);
+  }
+  SK.lastIndex = 0;
+  $$('[placeholder],[title],[aria-label],[alt]', root).forEach(el => {
+    for (const a of ['placeholder', 'title', 'aria-label', 'alt']) {
+      const v = el.getAttribute(a); if (v) { const t = trRaw(v.trim()); if (t != null) el.setAttribute(a, plainSk(t)); }
+    }
+  });
+}
+function langSwitch() {
+  return `<button class="lang" type="button" data-action="lang" title="Language / Jazyk" data-notr>${lang() === 'cs' ? '<b>CZ</b> · EN' : 'CZ · <b>EN</b>'}</button>`;
 }
 
 /* ---------------- data layer ---------------- */
@@ -166,6 +216,7 @@ function renderLogin() {
   app.innerHTML = `
   <div class="login">
     <div class="box">
+      <div class="login-lang">${langSwitch()}</div>
       <div class="mark" aria-hidden="true">SI</div>
       <div class="stack" style="gap:4px">
         <h1 style="font-size:1.5rem">Společenstvo Inscenace</h1>
@@ -179,6 +230,8 @@ function renderLogin() {
       </form>
     </div>
   </div>`;
+  document.documentElement.lang = lang();
+  translateDOM(app);
   $('#login-form').addEventListener('submit', async e => {
     e.preventDefault();
     const pw = $('#pw').value;
@@ -188,7 +241,7 @@ function renderLogin() {
       ok = !error;
     } else ok = pw === (C.demoPassword || 'jamu2016');
     if (ok) { ls.set('jamu-auth', '1'); start(); }
-    else { $('#login-err').textContent = WRONG[wrongCount++ % WRONG.length]; $('#pw').select(); }
+    else { $('#login-err').textContent = tr(WRONG[wrongCount++ % WRONG.length]); $('#pw').select(); }
   });
 }
 async function logout() {
@@ -213,7 +266,7 @@ function pickMe(force = false) {
     </div>`, null, modal => {
     modal.addEventListener('click', e => {
       const b = e.target.closest('[data-pick]'); if (!b) return;
-      if (b.dataset.pick === 'iva') { $('#pick-msg').textContent = 'Iva is no longer with us. 🕯️ (Please pick someone who actually shows up.)'; return; }
+      if (b.dataset.pick === 'iva') { $('#pick-msg').textContent = tr('Iva is no longer with us. 🕯️ (Please pick someone who actually shows up.)'); return; }
       ls.set('jamu-me', b.dataset.pick); closeModal(); render();
       if (b.dataset.pick === 'nikol') toast('Nikol! You actually arrived! We’re so happy. 💌');
       else toast('Welcome back, ' + nameOf(b.dataset.pick) + '!');
@@ -238,6 +291,7 @@ function openModal(html, onSubmit, setup) {
     try { await onSubmit(new FormData(form), form); closeModal(); }
     catch (err) { console.error(err); toast('That didn’t save: ' + (err.message || 'unknown error')); if (btn) btn.disabled = false; }
   });
+  translateDOM(modal);
   if (setup) setup(modal);
   const first = $('input, select, textarea, button', modal); if (first) first.focus();
 }
@@ -256,6 +310,7 @@ function shell(active, content) {
     <div class="wrap">
       <a class="logo" href="#home"><span class="mark" aria-hidden="true">SI</span><span class="name">Společenstvo Inscenace</span></a>
       <nav class="nav" aria-label="Main">${NAV.map(([k, l]) => `<a href="#${k}" class="${active === k ? 'on' : ''}">${l}</a>`).join('')}</nav>
+      ${langSwitch()}
       <button class="me" type="button" data-action="switch-me" title="Change who you are">${m ? avatar(m, 'xs') + ' ' + esc(nameOf(m)) : 'Who are you?'}</button>
     </div>
   </header>
@@ -480,7 +535,7 @@ function viewNext() {
     return `
       <div class="opt ${best && best.id === o.id && score(o) > 0 ? 'best' : ''} ${chosen ? 'chosen' : ''}">
         <div class="spread">
-          <span class="opt-date">${esc(fmtRange(o.start, o.end))}${chosen ? ' ✅' : ''}</span>
+          <span class="opt-date">${esc(fmtRange(o.start, o.end))}${chosen ? ' ✅' : ''}${best && best.id === o.id && score(o) > 0 ? ' <span class="best-tag">Most votes</span>' : ''}</span>
           <span class="row small num"><span class="chip yes">✓ ${counts.yes}</span><span class="chip maybe">? ${counts.maybe}</span><span class="chip no">✕ ${counts.no}</span></span>
         </div>
         <div class="row">${Object.entries(v).map(([id, a]) => `<span class="chip ${a}">${esc(nameOf(id))}</span>`).join('') || '<span class="muted small">No votes yet.</span>'}</div>
@@ -735,6 +790,7 @@ function openViewer(tripId, i) {
       </span>
     </div>`;
   document.body.appendChild(bg);
+  translateDOM(bg);
   hydratePhotos();
   let armed = false;
   bg.addEventListener('click', async e => {
@@ -744,7 +800,7 @@ function openViewer(tripId, i) {
     if (v === 'prev') { bg.remove(); openViewer(tripId, i - 1); }
     if (v === 'next') { bg.remove(); openViewer(tripId, i + 1); }
     if (v === 'del') {
-      if (!armed) { armed = true; e.target.textContent = 'Sure? Click again'; return; }
+      if (!armed) { armed = true; e.target.textContent = tr('Sure? Click again'); return; }
       bg.remove();
       if (LIVE && !p.path.startsWith('data:')) await sb.storage.from('photos').remove([p.path]);
       act(() => DB.remove(p), 'Photo deleted');
@@ -788,7 +844,7 @@ function viewTimeline() {
       <li class="tl-item ${m.kind === 'trip' ? 'is-trip' : ''}">
         <span class="tl-dot" aria-hidden="true">${k[1]}</span>
         <div class="tl-card">
-          <p class="small muted">${esc(m.approx ? (parseDate(m.date)?.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) || '') : fmtDate(m.date))} · ${esc(k[0])}</p>
+          <p class="small muted">${esc(m.approx ? (parseDate(m.date)?.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }) || '') : fmtDate(m.date))} · ${esc(k[0])}</p>
           <h3>${m.trip ? `<a href="#trip-${esc(m.trip.id)}">${esc(m.title)}</a>` : esc(m.title)}</h3>
           ${m.label ? `<span class="badge">${esc(m.label)}</span>` : ''}
           ${m.note ? `<p class="small">${esc(m.note)}</p>` : ''}
@@ -1042,6 +1098,7 @@ document.addEventListener('click', async e => {
   const opt = id => S.options.find(o => o.id === id);
 
   if (a === 'switch-me') return pickMe(true);
+  if (a === 'lang') { ls.set('jamu-lang', lang() === 'cs' ? 'en' : 'cs'); return $('.top') ? render() : renderLogin(); }
   if (a === 'logout') return logout();
   if (a === 'copy') {
     try { await navigator.clipboard.writeText(b.dataset.text); toast('Address copied'); }
@@ -1075,7 +1132,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'del-opt') {
     const o = opt(b.dataset.opt); if (!o) return;
-    if (pendingDelete !== o.id) { pendingDelete = o.id; b.textContent = 'Sure?'; return; }
+    if (pendingDelete !== o.id) { pendingDelete = o.id; b.textContent = tr('Sure?'); return; }
     pendingDelete = null;
     return act(() => DB.remove(o), 'Date removed');
   }
@@ -1115,7 +1172,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'del-idea') {
     const s = S.suggestions.find(x => x.id === b.dataset.idea); if (!s) return;
-    if (pendingDelete !== s.id) { pendingDelete = s.id; b.textContent = 'Sure?'; return; }
+    if (pendingDelete !== s.id) { pendingDelete = s.id; b.textContent = tr('Sure?'); return; }
     pendingDelete = null;
     return act(() => DB.remove(s), 'Suggestion deleted');
   }
@@ -1130,7 +1187,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'del-ms') {
     const m = S.milestones.find(x => x.id === b.dataset.ms); if (!m) return;
-    if (pendingDelete !== m.id) { pendingDelete = m.id; b.textContent = 'Sure?'; return; }
+    if (pendingDelete !== m.id) { pendingDelete = m.id; b.textContent = tr('Sure?'); return; }
     pendingDelete = null;
     return act(() => DB.remove(m), 'Milestone deleted');
   }
@@ -1146,7 +1203,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'del-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
-    if (pendingDelete !== t.id) { pendingDelete = t.id; b.textContent = 'Click again to delete it for good'; return; }
+    if (pendingDelete !== t.id) { pendingDelete = t.id; b.textContent = tr('Click again to delete it for good'); return; }
     pendingDelete = null;
     const kids = [...S.options, ...S.expenses, ...S.photos].filter(o => o.trip_id === t.id);
     if (LIVE) { const paths = S.photos.filter(p => p.trip_id === t.id).map(p => p.path); if (paths.length) await sb.storage.from('photos').remove(paths); }
@@ -1193,8 +1250,10 @@ function render() {
   else if (r === 'timeline') html = viewTimeline();
   else if (r === 'ideas') html = viewIdeas();
   else { active = 'home'; html = viewHome(); }
-  document.title = (PAGE_NAMES[active] && active !== 'home' ? PAGE_NAMES[active] + ' · ' : '') + 'Společenstvo Inscenace';
+  document.title = tr((PAGE_NAMES[active] && active !== 'home' ? PAGE_NAMES[active] + ' · ' : '') + 'Společenstvo Inscenace');
+  document.documentElement.lang = lang();
   app.innerHTML = shell(active, html);
+  translateDOM(app);
   hydratePhotos().catch(e => console.error(e));
 }
 window.addEventListener('hashchange', () => { pendingDelete = null; if ($('.top')) { render(); window.scrollTo(0, 0); } });
@@ -1202,10 +1261,12 @@ window.addEventListener('hashchange', () => { pendingDelete = null; if ($('.top'
 async function start() {
   if (!(await isLoggedIn())) return renderLogin();
   app.innerHTML = '<div class="loading">Loading… (still faster than the JAMU information system)</div>';
+  translateDOM(app);
   try { await load(); }
   catch (e) {
     console.error(e);
     app.innerHTML = `<div class="wrap loading"><p>Couldn’t reach the database: ${esc(e.message)}</p><p><button class="btn" type="button" data-action="logout">Log out and try again</button></p></div>`;
+    translateDOM(app);
     return;
   }
   render();
