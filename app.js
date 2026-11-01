@@ -352,14 +352,14 @@ function shell(active, content) {
 }
 
 /* ---------------- views ---------------- */
-function todoBlock() {
+// Personal to-dos, shown on the page they belong to: 'next' = the upcoming trip, 'archive' = the chronicle and past trips.
+function todoBlock(scope) {
   const m = me();
   const plan = planning();
-  const last = openTrip();
   const items = [];
   const add = (text, btn) => items.push(`<li class="todo"><span>${text}</span>${btn}</li>`);
   if (!m) add('First, tell the site who you are, so your votes and photos get your name.', `<button class="btn primary sm" type="button" data-action="switch-me">Pick my name</button>`);
-  if (m) {
+  if (m && scope === 'archive') {
     const mine = tripsBy(m);
     mine.filter(t => chronicleGaps(t).length).forEach(t =>
       add(`♛ You organised <b>${esc(t.title || 'Untitled trip')}</b>, so its archive page is yours to finish. Still missing: ${gapChips(t)}`,
@@ -376,7 +376,7 @@ function todoBlock() {
         `<span class="row" style="gap:6px"><button class="btn sm" type="button" data-action="add-my-trip">Add another trip</button><button class="btn sm ghost" type="button" data-action="chronicle-done">That was all of them</button></span>`);
     }
   }
-  if (plan) {
+  if (scope === 'next' && plan) {
     const opts = S.options.filter(o => o.trip_id === plan.id);
     if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="dates">Vote on dates</button>`);
     if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="rsvp">Answer</button>`);
@@ -385,19 +385,12 @@ function todoBlock() {
       const nextStep = crownSteps(plan).find(x => !x.done && !x.later);
       if (nextStep) add(`♛ You’re leading <b>${esc(plan.title)}</b>. Next step:`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="roles">${nextStep.text}</button>`);
     }
-  } else if (m && m === court().ruler) {
+  } else if (scope === 'next' && m && m === court().ruler) {
     add('You’re the reigning monarch, so the next trip is yours to plan. Start with the cottage and a few date options.', `<button class="btn primary sm" type="button" data-action="new-plan">Plan the next trip</button>`);
-  }
-  if (last) {
-    add(`Do you have nice photos from <b>${esc(last.title)}</b>? Share them with everyone.`, `<button class="btn primary sm" type="button" data-action="share-photos" data-trip="${last.id}">Share photos</button>`);
-    add(`Did you pay for something on <b>${esc(last.title)}</b>? Add it and the page works out who owes whom.`, `<button class="btn sm" type="button" data-action="add-exp" data-trip="${esc(last.id)}">Add an expense</button>`);
-    if (m && m === last.organiser) add(`♛ Once everyone has paid up for <b>${esc(last.title)}</b>, close the books and the trip moves to the archive.`, `<a class="btn sm" href="#after">Settle up</a>`);
-  } else if (!(m && PAST_RULERS.includes(m) && !chroniclesClosed()[m])) {
-    add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
   }
   if (!items.length) return '';
   return `
-    <section class="stack home-todos" style="gap:10px">
+    <section class="stack page-todos" style="gap:10px">
       <div><p class="eyebrow">Just for you</p><h2>What you can do right now</h2></div>
       <ul class="todos">${items.join('')}</ul>
     </section>`;
@@ -547,7 +540,7 @@ function stepRow(s) {
 function rolesPanel(t) {
   return `
     <section class="stack" id="roles">
-      <div><p class="eyebrow">Who does what</p><h2>Preparing the trip together</h2></div>
+      <div><p class="eyebrow">Who does what</p><h2>Preparing the trip together</h2><p class="muted small">Who is responsible for what, and what’s still missing.</p></div>
       <div class="two-col">
         <section class="panel stack duties crown-duties">
           <div><p class="eyebrow"><span class="crown">♛</span> The king or queen</p><h3>${esc(nameOf(t.organiser))}</h3><p class="muted small">Leads the preparations. If something’s unclear, ask here first.</p></div>
@@ -558,7 +551,6 @@ function rolesPanel(t) {
           <ul class="duty-list">${gangSteps(t).map(stepRow).join('')}</ul>
         </section>
       </div>
-      ${transportPanel(t)}
     </section>`;
 }
 
@@ -594,7 +586,7 @@ function transportPanel(t) {
     : '<p class="small solved">✓ Transport is sorted. Everyone who’s coming has a way there.</p>';
   return `
       <section class="panel stack" id="transport">
-        <div class="spread"><div><p class="eyebrow">Transport</p><h3>Who drives, who rides</h3></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
+        <div class="spread"><div><p class="eyebrow step-tag">Step 3 · Transport</p><h2>Who drives, who rides</h2></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
         ${status}
         <div class="cars">${carHtml || '<p class="muted">No cars offered yet. Got one? Offer it below.</p>'}</div>
         ${own.length ? `<p class="small"><span class="muted">Getting there on their own:</span> ${own.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>` : ''}
@@ -618,7 +610,7 @@ function viewNext() {
       <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1>
         <p>Welcome to the planning room. It\u2019s empty for now, because the next trip hasn\u2019t been started yet. Once whoever wears the crown starts it, this is where we vote on dates, say if we\u2019re coming and work out how to get there.</p></section>
       ${handover()}
-      ${todoBlock()}
+      ${todoBlock('next')}
       <div class="empty">
         <div class="big">♛</div>
         <h3>${esc(nameOf(c.ruler))}, the stage is yours.</h3>
@@ -659,57 +651,49 @@ function viewNext() {
   const tally = { yes: 0, maybe: 0, no: 0, love: 0 };
   Object.values(rsvp).forEach(x => { if (tally[x] !== undefined) tally[x]++; });
 
+  const coming = MEMBERS.filter(m => rsvp[m.id] === 'yes').map(m => m.id);
+  const overview = `
+    <section class="glance" aria-label="The trip at a glance">
+      <div class="glance-cell"><span class="eyebrow">When</span><b>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Still voting'}</b><span class="muted small">${plan.start ? (() => { const d = daysUntil(plan.start); return d > 1 ? `in ${d} days` : d === 1 ? 'tomorrow' : d === 0 ? 'today!' : 'under way'; })() : `${opts.length} ${opts.length === 1 ? 'weekend' : 'weekends'} in the vote`}</span></div>
+      <div class="glance-cell"><span class="eyebrow">Where</span><b>${esc(plan.place || 'Not decided yet')}</b><span class="muted small">${addr ? 'Address below' : 'Address comes later'}</span></div>
+      <div class="glance-cell"><span class="eyebrow"><span class="crown">♛</span> Leads it</span><span class="row" style="gap:8px">${avatar(plan.organiser, 'xs')}<b>${esc(nameOf(plan.organiser))}</b></span><span class="muted small">${esc(member(plan.organiser)?.nick || '')}</span></div>
+      <div class="glance-cell"><span class="eyebrow">Who’s coming</span><b class="num">${tally.yes}${tally.maybe ? ` <span class="muted small">+ ${tally.maybe} maybe</span>` : ''}</b><span class="av-row">${coming.map(id => avatar(id, 'xs')).join('')}</span></div>
+    </section>`;
+
   return `
   <div class="stack-lg">
     <section class="hero">
-      <p class="eyebrow">Next trip · organised by ♛ ${esc(nameOf(plan.organiser))}</p>
+      <p class="eyebrow">Next trip</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
-      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates, the cottage and the address. The rest of us vote, say if we\u2019re coming and sort out how to get there. Everything you need is below, step by step.</p>
-      <p class="hero-date">${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Date not decided yet. Vote below.'}</p>
+      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates, the cottage and the address. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.</p>
       ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
 
+    ${overview}
     ${handover()}
-    ${todoBlock()}
+    ${todoBlock('next')}
 
     <ol class="howto" aria-label="How this page works">
       <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
-      <li><b>Say if you\u2019re coming</b><span>One tap next to your name. You can change it any time.</span></li>
+      <li><b>Say if you’re coming</b><span>One tap next to your name. You can change it any time.</span></li>
       <li><b>Sort out your ride</b><span>Got a car? Offer the free seats. No car? Hop in with someone.</span></li>
-      <li><b>Get there</b><span>On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
-      <li><b>Wrap it up</b><span>Back home, press the button at the bottom to crown the next monarch and share photos.</span></li>
+      <li><b>Get there</b><span>On the day, tap “Navigate” and your phone takes you to the cottage.</span></li>
     </ol>
 
-    ${rolesPanel(plan)}
-
-    <div class="two-col">
-      <section class="panel stack">
-        <p class="eyebrow">The cottage</p>
-        <h2>${esc(plan.place || 'Place not set yet')}</h2>
-        ${addr ? `<p class="addr">${esc(addr)}</p>
-          <div class="row">
-            <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate in Google Maps ↗</a>
-            <a class="btn" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
-            <button class="btn" type="button" data-action="copy" data-text="${esc(addr)}">Copy address</button>
-          </div>` : (lead ? `<p class="muted">No address yet. <button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button></p>` : `<p class="muted">No address yet. ${esc(nameOf(plan.organiser))} adds it once the cottage is booked.</p>`)}
-        ${plan.notes ? `<div class="stack" style="gap:4px"><p class="eyebrow">Good to know</p><p class="story">${esc(plan.notes)}</p></div>` : ''}
-      </section>
-
-      <section class="panel stack" id="dates">
-        <div class="spread"><div><p class="eyebrow">Date voting</p><h2>When can you come?</h2></div></div>
-        ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
-        <div>${optsHtml || '<p class="muted">No dates proposed yet.</p>'}</div>
-        ${lead ? `<form id="opt-form" class="grid2" style="align-items:end">
-          <label>From<input type="date" name="start" id="opt-start" required></label>
-          <label>To<input type="date" name="end" id="opt-end"></label>
-          <button class="btn" type="submit">Propose these dates</button>
-        </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
-      </section>
-    </div>
+    <section class="panel stack" id="dates">
+      <div class="spread"><div><p class="eyebrow step-tag">Step 1 · Dates</p><h2>When can you come?</h2></div>${plan.start ? `<span class="chip yes">✓ ${esc(fmtRange(plan.start, plan.end))}</span>` : ''}</div>
+      ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
+      <div>${optsHtml || '<p class="muted">No dates proposed yet.</p>'}</div>
+      ${lead ? `<form id="opt-form" class="grid2" style="align-items:end">
+        <label>From<input type="date" name="start" id="opt-start" required></label>
+        <label>To<input type="date" name="end" id="opt-end"></label>
+        <button class="btn" type="submit">Propose these dates</button>
+      </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
+    </section>
 
     <section class="panel stack" id="rsvp">
       <div class="spread">
-        <div><p class="eyebrow">Who’s coming</p><h2 class="num">${tally.yes} coming · ${tally.maybe} maybe</h2></div>
+        <div><p class="eyebrow step-tag">Step 2 · Who’s coming</p><h2 class="num">${tally.yes} coming · ${tally.maybe} maybe</h2></div>
         <p class="muted small">Everyone answers only for themselves. (Nikol, we’ll believe it when we see you.)</p>
       </div>
       <div>
@@ -720,6 +704,22 @@ function viewNext() {
           </div>`).join('')}
       </div>
     </section>
+
+    ${transportPanel(plan)}
+
+    <section class="panel stack" id="cottage">
+      <p class="eyebrow step-tag">Step 4 · Getting there</p>
+      <h2>${esc(plan.place || 'Place not set yet')}</h2>
+      ${addr ? `<p class="addr">${esc(addr)}</p>
+        <div class="row">
+          <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate in Google Maps ↗</a>
+          <a class="btn" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
+          <button class="btn" type="button" data-action="copy" data-text="${esc(addr)}">Copy address</button>
+        </div>` : (lead ? `<p class="muted">No address yet. <button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button></p>` : `<p class="muted">No address yet. ${esc(nameOf(plan.organiser))} adds it once the cottage is booked.</p>`)}
+      ${plan.notes ? `<div class="stack" style="gap:4px"><p class="eyebrow">Good to know</p><p class="story">${esc(plan.notes)}</p></div>` : ''}
+    </section>
+
+    ${rolesPanel(plan)}
 
     <section class="panel spread">
       <div class="stack" style="gap:4px"><h3>Back home already?</h3><p class="muted small">Wrap up the trip: confirm who came, crown the next monarch, then add photos and expenses.</p></div>
@@ -737,6 +737,7 @@ function viewArchive() {
       <p>Welcome to the archive, our shared memory. Every trip we\u2019ve taken has its own page here, with photos, stories, quotes and who came. Each trip\u2019s king or queen writes its page, and anyone can add a story or a quote. Remember a trip that isn\u2019t here yet? Add it.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button></div>
     </section>
+    ${todoBlock('archive')}
     ${done.length ? `<div class="table-wrap"><table class="sheet">
       <thead><tr><th>Date</th><th>Trip</th><th>Organiser</th><th>Who came</th><th>Photos</th></tr></thead>
       <tbody>${done.map((t, i) => tripRow(t)).join('')}</tbody></table></div>` : `

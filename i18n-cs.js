@@ -445,6 +445,11 @@ const exact = {
   'Shared album linked.': 'Sdílené album je připojené.', 'Have a Google Drive or Photos album with everything?': 'Máte všechno v albu na Google Disku nebo ve Fotkách?',
   'Change album link': 'Změnit odkaz na album', 'Link the album': 'Připojit album', '+ Add expense': '+ Přidat výdaj',
   'Trip file created. Now propose some dates!': 'Výlet je založený. Teď navrhni termíny!', 'Trip file created. The gang can see it now.': 'Výlet je založený. Parta ho už vidí.',
+  // ---- next trip at a glance + steps
+  'Leads it': 'Vede ho', 'Still voting': 'Hlasuje se', 'Not decided yet': 'Zatím nerozhodnuto', 'Address below': 'Adresa je níž', 'Address comes later': 'Adresa přijde později',
+  'tomorrow': 'zítra', 'today!': 'dnes!', 'under way': 'právě probíhá',
+  'Step 1 · Dates': 'Krok 1 · Termín', 'Step 2 · Who’s coming': 'Krok 2 · Kdo jede', 'Step 3 · Transport': 'Krok 3 · Doprava', 'Step 4 · Getting there': 'Krok 4 · Cesta na chatu',
+  'Who is responsible for what, and what’s still missing.': 'Kdo za co odpovídá a co ještě chybí.',
   // ---- page welcomes (timeless: no names, they must stay true for every trip)
   'Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates, the cottage and the address. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.': 'Vítej v plánovací místnosti. Tady se rodí náš další společný víkend. Vede ho vždy ten, kdo právě nosí korunu, a rozhoduje o termínu, chatě i adrese. My ostatní hlasujeme, dáváme vědět, jestli jedeme, a domlouváme se, jak se tam dostaneme. Všechno potřebné najdeš níž, krok za krokem.',
   'Welcome to the planning room. It’s empty for now, because the next trip hasn’t been started yet. Once whoever wears the crown starts it, this is where we vote on dates, say if we’re coming and work out how to get there.': 'Vítej v plánovací místnosti. Zatím je tu prázdno, další výlet ještě nikdo nezaložil. Jakmile ho založí ten, kdo právě nosí korunu, budeme tu hlasovat o termínu, dávat vědět, kdo jede, a domlouvat dopravu.',
@@ -488,6 +493,9 @@ const exact = {
 };
 
 const patterns = [
+  [/^in (\d+) days$/, 'za $1 dní'],
+  [/^(\d+) weekends? in the vote$/, (m, n) => `${n} ${plural(n, 'víkend', 'víkendy', 'víkendů')} ve hře`],
+  [/^\+ (\d+) maybe$/, '+ $1 možná'],
   [/^(.+) leads the next trip$/, '$1 vede další výlet'],
   [/^Leaving from: (.+)$/, 'Odjezd: $1'],
   [/^You’re riding with (.+)\. 🚗$/, 'Sedíš v autě, řídí $1. 🚗'],
