@@ -82,7 +82,9 @@ function seedDemo() {
       place: 'Chata u Lesa (example)', address: 'Hlubočky 123, 783 61 Hlubočky', notes: 'Bring: slippers, a towel, a dish to share.\nKeys are under the gnome.', rsvp: { ladislav: 'yes', julia: 'yes', jakub: 'yes', nikol: 'love', sylvie: 'maybe', michaela: 'yes' } },
     { id: o1, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 17), end: fri(4, 19), votes: { ladislav: 'yes', julia: 'yes', jakub: 'maybe', nikol: 'yes', michaela: 'yes' } },
     { id: o2, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 24), end: fri(4, 26), votes: { ladislav: 'yes', julia: 'no', jakub: 'yes', sylvie: 'yes', adam: 'yes', viktoria: 'yes' } },
-    { id: o3, collection: 'date_options', created_at: now, trip_id: t, start: fri(5, 8), end: fri(5, 10), votes: { ladislav: 'maybe', alzbeta: 'yes' } }
+    { id: o3, collection: 'date_options', created_at: now, trip_id: t, start: fri(5, 8), end: fri(5, 10), votes: { ladislav: 'maybe', alzbeta: 'yes' } },
+    { id: uid(), collection: 'milestones', created_at: now, date: `${y - 1}-06-12`, who: ['michaela'], kind: 'baby', title: 'Míša’s baby is born (example)', label: 'First baby of the gang', note: 'Replace this example with the real date.' },
+    { id: uid(), collection: 'milestones', created_at: now, date: '2019-06-20', who: [], kind: 'school', title: 'We survive JAMU (example)', label: '', note: 'State exams done. Nobody cried. (Everybody cried.)' }
   ];
 }
 
@@ -120,6 +122,9 @@ async function load() {
     trips: all.filter(r => r.collection === 'trips'),
     options: all.filter(r => r.collection === 'date_options'),
     expenses: all.filter(r => r.collection === 'expenses'),
+    milestones: all.filter(r => r.collection === 'milestones'),
+    suggestions: all.filter(r => r.collection === 'suggestions'),
+    photos: all.filter(r => r.collection === 'photos'),
     settings: all.find(r => r.collection === 'settings') || null
   };
 }
@@ -234,7 +239,8 @@ function closeModal() { $$('.modal-bg').forEach(m => m.remove()); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && me()) closeModal(); });
 
 /* ---------------- layout ---------------- */
-const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['next', 'Next Trip'], ['archive', 'Archive'], ['after', 'After the Trip']];
+const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['timeline', 'Timeline'], ['next', 'Next Trip'], ['archive', 'Archive'], ['after', 'After the Trip']];
+const PAGE_NAMES = { home: 'Home', gang: 'The Gang', timeline: 'Timeline', next: 'Next Trip', archive: 'Archive', after: 'After the Trip', ideas: 'Suggestions' };
 function route() { const h = (location.hash || '#home').slice(1); return h || 'home'; }
 
 function shell(active, content) {
@@ -251,8 +257,9 @@ function shell(active, content) {
   <main><div class="wrap">${content}</div></main>
   <footer><div class="wrap">
     <span>Est. 2016 at JAMU, Brno. Forged by deadlines, held together by love.</span>
-    <span>In memory of ${esc(GHOST.name)}, who is no longer with us. (She’s fine.) · <button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
-  </div></footer>`;
+    <span class="row" style="gap:4px 12px"><a href="#ideas">Suggestions${openIdeas() ? ` (${openIdeas()} open)` : ''}</a><span>In memory of ${esc(GHOST.name)}, who is no longer with us. (She’s fine.)</span><button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
+  </div></footer>
+  <button class="suggest-fab" type="button" data-action="suggest">✎ Suggest an edit</button>`;
 }
 
 /* ---------------- views ---------------- */
@@ -266,6 +273,35 @@ function allQuotes() {
   const q = [];
   S.trips.forEach(t => (t.quotes || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(s => q.push({ text: s, trip: t })));
   return q;
+}
+
+function todoBlock() {
+  const m = me();
+  const plan = planning();
+  const last = doneTrips()[0];
+  const items = [];
+  const add = (text, btn) => items.push(`<li class="todo"><span>${text}</span>${btn}</li>`);
+  if (!m) add('First, tell the site who you are, so your votes and photos get your name.', `<button class="btn primary sm" type="button" data-action="switch-me">Pick my name</button>`);
+  if (plan) {
+    const opts = S.options.filter(o => o.trip_id === plan.id);
+    if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<a class="btn primary sm" href="#next">Vote on dates</a>`);
+    if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<a class="btn primary sm" href="#next">Answer</a>`);
+  } else if (m && m === court().ruler) {
+    add('You’re the reigning monarch, so the next trip is yours to plan. Start with the cottage and a few date options.', `<button class="btn primary sm" type="button" data-action="new-plan">Plan the next trip</button>`);
+  }
+  if (last) {
+    add(`Do you have nice photos from <b>${esc(last.title)}</b>? Share them with everyone.`, `<button class="btn primary sm" type="button" data-action="share-photos" data-trip="${last.id}">Share photos</button>`);
+    add(`Did you pay for something on <b>${esc(last.title)}</b>? Add it and the page works out who owes whom.`, `<a class="btn sm" href="#trip-${esc(last.id)}">Add an expense</a>`);
+  } else {
+    add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
+  }
+  add('Something big happened in your life (a baby, a wedding, a new flat)? Put it on our timeline.', `<button class="btn sm" type="button" data-action="add-ms">Add a milestone</button>`);
+  add('Spotted a mistake, or have an idea for the site?', `<button class="btn sm" type="button" data-action="suggest">Suggest an edit</button>`);
+  return `
+    <section class="stack" style="gap:10px">
+      <div><p class="eyebrow">Start here</p><h2>What you can do right now</h2></div>
+      <ul class="todos">${items.join('')}</ul>
+    </section>`;
 }
 
 function viewHome() {
@@ -308,6 +344,24 @@ function viewHome() {
       <h1>Společenstvo Inscenace</h1>
       <p>Ten people who survived theatre management together (plus one adopted from JevTech). Twice a year we leave the spreadsheets behind for a cottage in the woods to cook, walk, talk and recover.</p>
     </section>
+
+    <section class="letter">
+      <p class="eyebrow">Welcome, gang</p>
+      <div class="letter-body">
+        <p>This is our own little corner of the internet.</p>
+        <p>We met at JAMU in 2016, survived more deadlines than anyone should, and somehow ended up as family. Every time we sit at a cottage table, someone says “we should write this down”. So here it is: one place for everything that holds us together.</p>
+        <ul class="letter-list">
+          <li><a href="#next"><b>Plan the next trip.</b></a> Vote on dates, say if you’re coming, and find the cottage with one tap.</li>
+          <li><a href="#archive"><b>Remember the old ones.</b></a> Every trip with its photos, stories and the quotes we’ll never live down.</li>
+          <li><a href="#after"><b>Settle up without awkward messages.</b></a> Log who paid for what and the page works out who owes whom.</li>
+          <li><a href="#timeline"><b>Keep our life story.</b></a> Babies, weddings, new homes and other big moments on one shared timeline.</li>
+        </ul>
+        <p>It’s ours, so make it better. If something is missing or wrong, press “Suggest an edit” in the corner.</p>
+        <p class="signature">Built for us with <span class="heart">♥</span><br><span>Jakub (Honza Peniz)</span></p>
+      </div>
+    </section>
+
+    ${todoBlock()}
 
     <section class="court" aria-label="The royal court">
       <div class="throne reign">
@@ -439,6 +493,13 @@ function viewNext() {
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>
     </section>
 
+    <ol class="howto" aria-label="How this page works">
+      <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
+      <li><b>Say if you\u2019re coming</b><span>One tap next to your name. You can change it any time.</span></li>
+      <li><b>Get there</b><span>On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
+      <li><b>Wrap it up</b><span>Back home, press the button at the bottom to crown the next monarch and share photos.</span></li>
+    </ol>
+
     <div class="two-col">
       <section class="panel stack">
         <p class="eyebrow">The cottage</p>
@@ -490,7 +551,7 @@ function viewArchive() {
   return `
   <div class="stack-lg">
     <section class="spread" style="align-items:end">
-      <div class="stack" style="gap:8px"><p class="eyebrow">Every weekend we survived</p><h1>The Archive</h1></div>
+      <div class="stack" style="gap:8px"><p class="eyebrow">Every weekend we survived</p><h1>The Archive</h1><p class="muted" style="max-width:60ch">Every trip we\u2019ve taken. Open one to see its photos, stories and who paid for what. Remember a trip that isn\u2019t here yet? Add it.</p></div>
       <button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button>
     </section>
     ${done.length ? `<div class="table-wrap"><table class="sheet">
@@ -512,8 +573,237 @@ function tripRow(t) {
     <td><a class="trip-link" href="${href}">${esc(t.title || 'Untitled trip')}</a>${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
     <td class="small"><span class="crown">♛</span> ${esc(nameOf(t.organiser))}${t.crowned ? ` <span class="muted">→ ${esc(nameOf(t.crowned))}</span>` : ''}</td>
     <td><div class="row" style="gap:6px"><div class="av-row">${(t.attendees || []).map(id => avatar(id, 'xs')).join('')}</div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol came</span>' : ''}</div></td>
-    <td>${safeUrl(t.photos_url) ? `<a class="small" target="_blank" rel="noopener" href="${esc(t.photos_url)}">Album ↗</a>` : '<span class="muted small">—</span>'}</td>
+    <td class="small">${(() => { const n = S.photos.filter(p => p.trip_id === t.id).length; return n ? `${n} ${n === 1 ? 'photo' : 'photos'}` : safeUrl(t.photos_url) ? 'Album' : '<span class="muted">—</span>'; })()}</td>
   </tr>`;
+}
+
+function photosSection(t, albumUrl) {
+  const pics = S.photos.filter(p => p.trip_id === t.id).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  return `
+  <section class="panel stack" id="photos">
+    <div class="spread">
+      <div><p class="eyebrow">Photos</p><h2>${pics.length ? `${pics.length} ${pics.length === 1 ? 'photo' : 'photos'}` : 'No photos yet'}</h2></div>
+      ${albumUrl ? `<a class="btn sm" target="_blank" rel="noopener" href="${esc(albumUrl)}">Full album ↗</a>` : ''}
+    </div>
+    <label class="dropzone" for="photo-input" data-trip="${t.id}">
+      <input type="file" id="photo-input" accept="image/*" multiple data-trip="${t.id}">
+      <span class="dz-title">Add photos</span>
+      <span class="muted small">Tap to pick from your phone, or drop files here. Several at once is fine.</span>
+      <span class="dz-progress small" id="photo-progress" role="status"></span>
+    </label>
+    ${pics.length ? `<div class="gallery">${pics.map((p, i) => `
+      <button type="button" class="ph" data-action="view-photo" data-trip="${t.id}" data-i="${i}" aria-label="Open photo ${i + 1}">
+        <img data-photo="${esc(p.path)}" alt="" loading="lazy">
+        ${p.by ? `<span class="ph-by">${esc(nameOf(p.by))}</span>` : ''}
+      </button>`).join('')}</div>` : ''}
+    <details class="album-link">
+      <summary class="small muted">${albumUrl ? 'Change the shared album link' : 'Have a Google Photos / Drive album with everything? Link it too'}</summary>
+      <form id="photo-form" class="row" data-trip="${t.id}" style="margin-top:10px">
+        <input type="url" name="url" id="photo-url" placeholder="https://photos.app.goo.gl/…" value="${esc(albumUrl)}" required style="flex:1 1 240px">
+        <button class="btn" type="submit">Save link</button>
+      </form>
+    </details>
+  </section>`;
+}
+
+/* ---------------- photo storage ---------------- */
+// Live: private Supabase Storage bucket "photos" (signed URLs). Demo: small data URLs in the browser.
+const signed = new Map();
+async function hydratePhotos() {
+  const imgs = $$('img[data-photo]');
+  if (!imgs.length) return;
+  const need = [...new Set(imgs.map(i => i.dataset.photo))].filter(p => !p.startsWith('data:') && !signed.has(p));
+  if (need.length && LIVE) {
+    const { data } = await sb.storage.from('photos').createSignedUrls(need, 60 * 60 * 6);
+    (data || []).forEach(d => { if (d.signedUrl) signed.set(d.path, d.signedUrl); });
+  }
+  imgs.forEach(i => { const p = i.dataset.photo; i.src = p.startsWith('data:') ? p : (signed.get(p) || ''); });
+}
+function shrink(file, maxSide, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('Could not read this image')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read ' + file.name)); };
+    img.src = url;
+  });
+}
+const blobToDataUrl = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
+async function uploadPhotos(tripId, files) {
+  files = [...files].filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  const prog = $('#photo-progress');
+  let ok = 0;
+  for (let i = 0; i < files.length; i++) {
+    if (prog) prog.textContent = `Uploading ${i + 1} of ${files.length}…`;
+    try {
+      let path;
+      if (LIVE) {
+        const blob = await shrink(files[i], 2000, 0.85);
+        path = `${tripId}/${uid()}.jpg`;
+        const { error } = await sb.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' });
+        if (error) throw error;
+      } else {
+        path = await blobToDataUrl(await shrink(files[i], 900, 0.7));
+      }
+      await DB.add('photos', { trip_id: tripId, path, by: me() || '' });
+      ok++;
+    } catch (e) { console.error(e); toast(e.message || 'One photo failed to upload'); }
+  }
+  await load(); render();
+  toast(ok ? `${ok} ${ok === 1 ? 'photo' : 'photos'} added` : 'No photos were added');
+}
+document.addEventListener('change', e => {
+  if (e.target.id === 'photo-input') uploadPhotos(e.target.dataset.trip, e.target.files);
+});
+document.addEventListener('dragover', e => { const z = e.target.closest('.dropzone'); if (z) { e.preventDefault(); z.classList.add('over'); } });
+document.addEventListener('dragleave', e => { const z = e.target.closest('.dropzone'); if (z) z.classList.remove('over'); });
+document.addEventListener('drop', e => { const z = e.target.closest('.dropzone'); if (!z) return; e.preventDefault(); z.classList.remove('over'); uploadPhotos(z.dataset.trip, e.dataTransfer.files); });
+
+function openViewer(tripId, i) {
+  const pics = S.photos.filter(p => p.trip_id === tripId).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  if (!pics.length) return;
+  i = (i + pics.length) % pics.length;
+  const p = pics[i];
+  closeModal();
+  const bg = document.createElement('div');
+  bg.className = 'viewer';
+  bg.innerHTML = `
+    <img data-photo="${esc(p.path)}" alt="Photo ${i + 1} of ${pics.length}">
+    <div class="viewer-bar">
+      <span class="small">${i + 1} / ${pics.length}${p.by ? ' · by ' + esc(nameOf(p.by)) : ''}</span>
+      <span class="row">
+        <button class="btn sm" type="button" data-v="prev" aria-label="Previous">←</button>
+        <button class="btn sm" type="button" data-v="next" aria-label="Next">→</button>
+        <button class="btn sm danger" type="button" data-v="del">Delete</button>
+        <button class="btn sm" type="button" data-v="close">Close</button>
+      </span>
+    </div>`;
+  document.body.appendChild(bg);
+  hydratePhotos();
+  let armed = false;
+  bg.addEventListener('click', async e => {
+    const v = e.target.closest('[data-v]')?.dataset.v;
+    if (!v && e.target === bg) return bg.remove();
+    if (v === 'close') bg.remove();
+    if (v === 'prev') { bg.remove(); openViewer(tripId, i - 1); }
+    if (v === 'next') { bg.remove(); openViewer(tripId, i + 1); }
+    if (v === 'del') {
+      if (!armed) { armed = true; e.target.textContent = 'Sure? Click again'; return; }
+      bg.remove();
+      if (LIVE && !p.path.startsWith('data:')) await sb.storage.from('photos').remove([p.path]);
+      act(() => DB.remove(p), 'Photo deleted');
+    }
+  });
+}
+document.addEventListener('keydown', e => {
+  const v = $('.viewer'); if (!v) return;
+  const map = { ArrowLeft: 'prev', ArrowRight: 'next', Escape: 'close' };
+  if (map[e.key]) $(`[data-v="${map[e.key]}"]`, v)?.click();
+});
+
+/* ---------------- timeline ---------------- */
+const KINDS = {
+  baby: ['Baby', '👶'], love: ['Love & weddings', '💍'], home: ['New home', '🏡'], work: ['Work', '💼'],
+  school: ['School', '🎓'], gang: ['The gang', '♛'], other: ['Other', '✦']
+};
+function viewTimeline() {
+  const items = [
+    { date: '2016-09-01', kind: 'gang', title: 'We meet at JAMU', label: 'Where it all began', note: 'Theatre management, class of 2016. Dalibor joins from JevTech and gets adopted.', fixed: true },
+    ...S.milestones,
+    ...doneTrips().filter(t => t.start).map(t => ({ date: t.start, kind: 'trip', title: t.title, note: t.place, trip: t, who: t.attendees || [] }))
+  ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  let lastYear = null;
+  const rows = items.map(m => {
+    const y = (m.date || '').slice(0, 4);
+    const yearHead = y !== lastYear ? `<li class="tl-year"><span>${esc(y)}</span></li>` : '';
+    lastYear = y;
+    const k = m.kind === 'trip' ? ['Trip', '🏕️'] : (KINDS[m.kind] || KINDS.other);
+    return `${yearHead}
+      <li class="tl-item ${m.kind === 'trip' ? 'is-trip' : ''}">
+        <span class="tl-dot" aria-hidden="true">${k[1]}</span>
+        <div class="tl-card">
+          <p class="small muted">${esc(fmtDate(m.date))} · ${esc(k[0])}</p>
+          <h3>${m.trip ? `<a href="#trip-${esc(m.trip.id)}">${esc(m.title)}</a>` : esc(m.title)}</h3>
+          ${m.label ? `<span class="badge">${esc(m.label)}</span>` : ''}
+          ${m.note ? `<p class="small">${esc(m.note)}</p>` : ''}
+          ${(m.who || []).length ? `<div class="av-row">${m.who.map(id => avatar(id, 'xs')).join('')}</div>` : ''}
+          ${!m.fixed && !m.trip ? `<div class="row tl-actions"><button class="btn sm ghost" type="button" data-action="edit-ms" data-ms="${m.id}">Edit</button><button class="btn sm ghost danger" type="button" data-action="del-ms" data-ms="${m.id}">Delete</button></div>` : ''}
+        </div>
+      </li>`;
+  }).join('');
+  return `
+  <div class="stack-lg">
+    <section class="spread" style="align-items:end">
+      <div class="stack" style="gap:8px">
+        <p class="eyebrow">Our life, together</p>
+        <h1>Timeline</h1>
+        <p class="muted" style="max-width:60ch">Babies, weddings, new homes, new jobs and other big moments. Trips from the archive appear here automatically.</p>
+      </div>
+      <button class="btn primary" type="button" data-action="add-ms">+ Add a milestone</button>
+    </section>
+    <ol class="timeline">${rows}</ol>
+  </div>`;
+}
+function milestoneForm(m) {
+  return `
+  <div class="spread"><h2>${m ? 'Edit milestone' : 'Add a milestone'}</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
+  <form>
+    <label>What happened<input name="title" id="m-title" required value="${esc(m?.title)}" placeholder="Míša’s baby is born"></label>
+    <div class="grid2">
+      <label>Date<input type="date" name="date" id="m-date" required value="${esc(m?.date)}"></label>
+      <label>Type<select name="kind" id="m-kind">${Object.entries(KINDS).map(([k, [l, i]]) => `<option value="${k}" ${m?.kind === k ? 'selected' : ''}>${i} ${l}</option>`).join('')}</select></label>
+    </div>
+    <label>Special label (optional)<input name="label" id="m-label" value="${esc(m?.label)}" placeholder="First baby of the gang"></label>
+    <div class="stack" style="gap:6px"><span class="small muted" style="font-weight:500">Who is it about</span>${memberChecks('who', m?.who || [])}</div>
+    <label>A few words (optional)<textarea name="note" id="m-note" placeholder="Name, weight, who cried first…">${esc(m?.note)}</textarea></label>
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
+  </form>`;
+}
+const readMilestone = fd => ({ title: String(fd.get('title')).trim(), date: String(fd.get('date')), kind: String(fd.get('kind')), label: String(fd.get('label') || '').trim(), note: String(fd.get('note') || '').trim(), who: fd.getAll('who') });
+
+/* ---------------- suggestions ---------------- */
+const openIdeas = () => S.suggestions.filter(s => !s.done).length;
+function suggestForm() {
+  const here = route().startsWith('trip-') ? 'Archive' : (PAGE_NAMES[route()] || 'Home');
+  return `
+  <div class="spread"><h2>Suggest an edit</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
+  <form>
+    <p class="muted small">Spotted a typo, a wrong date, a missing joke, or have an idea for a new feature? Write it here. Jakub sees every suggestion.</p>
+    <label>Which page<select name="page" id="s-page">${Object.values(PAGE_NAMES).concat('Whole site / new idea').map(p => `<option ${p === here ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></label>
+    <label>Your suggestion<textarea name="text" id="s-text" required placeholder="e.g. My nickname is spelled wrong. It should be…"></textarea></label>
+    <div class="row"><button class="btn primary" type="submit">Send suggestion</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
+  </form>`;
+}
+function viewIdeas() {
+  const list = [...S.suggestions].sort((a, b) => (a.done === b.done ? (b.created_at || '').localeCompare(a.created_at || '') : a.done ? 1 : -1));
+  return `
+  <div class="stack-lg">
+    <section class="spread" style="align-items:end">
+      <div class="stack" style="gap:8px"><p class="eyebrow">Make it better</p><h1>Suggestions</h1><p class="muted">Ideas and fixes from the gang. Mark them done once they’re in.</p></div>
+      <button class="btn primary" type="button" data-action="suggest">+ New suggestion</button>
+    </section>
+    ${list.length ? `<div class="stack">${list.map(s => `
+      <article class="panel idea ${s.done ? 'done' : ''}">
+        <div class="spread">
+          <span class="row small muted">${s.by ? avatar(s.by, 'xs') + ' ' + esc(nameOf(s.by)) : 'Someone'} · ${esc(s.page || '')} · ${esc(fmtDate((s.created_at || '').slice(0, 10)))}</span>
+          <span class="chip ${s.done ? 'yes' : 'maybe'}">${s.done ? 'Done' : 'Open'}</span>
+        </div>
+        <p class="story">${esc(s.text)}</p>
+        <div class="row">
+          <button class="btn sm" type="button" data-action="toggle-idea" data-idea="${s.id}">${s.done ? 'Reopen' : 'Mark as done'}</button>
+          <button class="btn sm ghost danger" type="button" data-action="del-idea" data-idea="${s.id}">Delete</button>
+        </div>
+      </article>`).join('')}</div>` : `
+      <div class="empty"><div class="big">✎</div><h3>No suggestions yet</h3><p class="muted">Either the site is perfect, or nobody has looked closely yet.</p></div>`}
+  </div>`;
 }
 
 function viewTrip(t, { after = false } = {}) {
@@ -532,22 +822,10 @@ function viewTrip(t, { after = false } = {}) {
       <p>${esc(fmtRange(t.start, t.end))}${t.place ? ' · ' + esc(t.place) : ''}</p>
       <p class="small"><span class="crown">♛</span> Organised by <b>${esc(member(t.organiser)?.name || '—')}</b>${t.crowned ? ` · crowned at the end: <b>${esc(member(t.crowned)?.name)}</b>` : ''}</p>
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${t.id}">Edit</button>${after ? `<a class="btn sm ghost" href="#trip-${esc(t.id)}">Permalink</a>` : ''}</div>
+      ${after ? `<p class="hint">Just got back? Two things to do: <button class="linkish" type="button" data-action="share-photos" data-trip="${t.id}">share your photos</button> and <button class="linkish" type="button" data-action="scroll" data-to="exp-form">add what you paid for</button>. The page works out who owes whom.</p>` : ''}
     </section>
 
-    ${photos ? `
-      <section class="photos-cta">
-        <div class="stack" style="gap:2px"><p class="eyebrow" style="color:#f3cf72">Photos</p><h2>All the pictures are in one album</h2></div>
-        <a class="btn" target="_blank" rel="noopener" href="${esc(photos)}">Open the album ↗</a>
-      </section>` : `
-      <section class="panel stack">
-        <p class="eyebrow">Photos</p>
-        <h3>Where are the pictures?</h3>
-        <p class="muted small">Make a shared Google Drive (or Google Photos) album, upload everything there, and paste its link here.</p>
-        <form id="photo-form" class="row" data-trip="${t.id}">
-          <input type="url" name="url" id="photo-url" placeholder="https://drive.google.com/…" required style="flex:1 1 240px">
-          <button class="btn primary" type="submit">Save link</button>
-        </form>
-      </section>`}
+    ${photosSection(t, photos)}
 
     <section class="panel stack">
       <div class="spread"><div><p class="eyebrow">Who was there</p><h3 class="num">${(t.attendees || []).length} survivors</h3></div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol actually came</span>' : ''}</div>
@@ -762,11 +1040,51 @@ document.addEventListener('click', async e => {
     const x = S.expenses.find(z => z.id === b.dataset.exp); if (!x) return;
     return act(() => DB.remove(x), 'Expense deleted');
   }
+  if (a === 'suggest') return openModal(suggestForm(), async fd => {
+    await DB.add('suggestions', { page: String(fd.get('page')), text: String(fd.get('text')).trim(), by: me() || '', done: false });
+    await load(); render(); toast('Thanks! Your suggestion is in.');
+  });
+  if (a === 'toggle-idea') {
+    const s = S.suggestions.find(x => x.id === b.dataset.idea); if (!s) return;
+    return act(() => DB.update(s, { done: !s.done }), s.done ? 'Reopened' : 'Marked as done');
+  }
+  if (a === 'del-idea') {
+    const s = S.suggestions.find(x => x.id === b.dataset.idea); if (!s) return;
+    if (pendingDelete !== s.id) { pendingDelete = s.id; b.textContent = 'Sure?'; return; }
+    pendingDelete = null;
+    return act(() => DB.remove(s), 'Suggestion deleted');
+  }
+  if (a === 'add-ms') return openModal(milestoneForm(null), async fd => {
+    await DB.add('milestones', readMilestone(fd));
+    if (route() !== 'timeline') location.hash = '#timeline';
+    await load(); render(); toast('Added to the timeline');
+  });
+  if (a === 'edit-ms') {
+    const m = S.milestones.find(x => x.id === b.dataset.ms); if (!m) return;
+    return openModal(milestoneForm(m), async fd => { await DB.update(m, readMilestone(fd)); await load(); render(); toast('Saved'); });
+  }
+  if (a === 'del-ms') {
+    const m = S.milestones.find(x => x.id === b.dataset.ms); if (!m) return;
+    if (pendingDelete !== m.id) { pendingDelete = m.id; b.textContent = 'Sure?'; return; }
+    pendingDelete = null;
+    return act(() => DB.remove(m), 'Milestone deleted');
+  }
+  if (a === 'scroll') { const el = document.getElementById(b.dataset.to); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.querySelector('input')?.focus({ preventScroll: true }); return; }
+  if (a === 'view-photo') return openViewer(b.dataset.trip, Number(b.dataset.i));
+  if (a === 'share-photos') {
+    // Jump to the trip and open the photo picker straight away (still inside the tap).
+    history.replaceState(null, '', '#trip-' + b.dataset.trip);
+    render();
+    $('#photos')?.scrollIntoView({ block: 'start' });
+    $('#photo-input')?.click();
+    return;
+  }
   if (a === 'del-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
     if (pendingDelete !== t.id) { pendingDelete = t.id; b.textContent = 'Click again to delete it for good'; return; }
     pendingDelete = null;
-    const kids = [...S.options.filter(o => o.trip_id === t.id), ...S.expenses.filter(x => x.trip_id === t.id)];
+    const kids = [...S.options, ...S.expenses, ...S.photos].filter(o => o.trip_id === t.id);
+    if (LIVE) { const paths = S.photos.filter(p => p.trip_id === t.id).map(p => p.path); if (paths.length) await sb.storage.from('photos').remove(paths); }
     return act(async () => { for (const k of kids) await DB.remove(k); await DB.remove(t); location.hash = '#archive'; }, 'Trip deleted. It is no longer with us. 🕯️');
   }
 });
@@ -807,10 +1125,12 @@ function render() {
   else if (r === 'next') html = viewNext();
   else if (r === 'archive') html = viewArchive();
   else if (r === 'after') html = viewAfter();
+  else if (r === 'timeline') html = viewTimeline();
+  else if (r === 'ideas') html = viewIdeas();
   else { active = 'home'; html = viewHome(); }
-  const titles = { home: 'Společenstvo Inscenace', gang: 'The Gang', next: 'Next Trip', archive: 'Archive', after: 'After the Trip' };
-  document.title = (titles[active] && active !== 'home' ? titles[active] + ' · ' : '') + 'Společenstvo Inscenace';
+  document.title = (PAGE_NAMES[active] && active !== 'home' ? PAGE_NAMES[active] + ' · ' : '') + 'Společenstvo Inscenace';
   app.innerHTML = shell(active, html);
+  hydratePhotos().catch(e => console.error(e));
 }
 window.addEventListener('hashchange', () => { pendingDelete = null; if ($('.top')) { render(); window.scrollTo(0, 0); } });
 

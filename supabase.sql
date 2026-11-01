@@ -17,3 +17,20 @@ drop policy if exists "gang can do everything" on public.records;
 create policy "gang can do everything" on public.records
   for all to authenticated
   using (true) with check (true);
+
+-- Photo storage: a private bucket only logged-in gang members can see and use.
+insert into storage.buckets (id, name, public)
+values ('photos', 'photos', false)
+on conflict (id) do nothing;
+
+drop policy if exists "gang reads photos" on storage.objects;
+create policy "gang reads photos" on storage.objects
+  for select to authenticated using (bucket_id = 'photos');
+
+drop policy if exists "gang uploads photos" on storage.objects;
+create policy "gang uploads photos" on storage.objects
+  for insert to authenticated with check (bucket_id = 'photos');
+
+drop policy if exists "gang deletes photos" on storage.objects;
+create policy "gang deletes photos" on storage.objects
+  for delete to authenticated using (bucket_id = 'photos');

@@ -3,11 +3,13 @@
 The private website of Společenstvo Inscenace, the JAMU class of 2016: plan cottage weekends, vote on dates, split the bills, and keep the memories. Iva is no longer with us. (She's fine.)
 
 ## Pages
-- **Home**: the reigning monarch and heir, the next trip with a countdown, stats, a random quote.
+- **Home**: a welcome letter, a "what you can do right now" list, the reigning monarch and heir, the next trip with a countdown, stats, a random quote.
 - **The Gang**: everyone's card with nicknames, trip counts and crowns.
+- **Timeline**: life milestones (babies, weddings, new homes…) plus every trip from the archive.
 - **Next Trip**: cottage address with navigation (Google Maps / Mapy.cz), date voting, who's coming, and the crowning ceremony at the end.
 - **Archive**: past trips in one table. Anyone can add one.
-- **After the Trip**: photo album link, who paid for what, and who owes whom.
+- **After the Trip**: upload photos straight from the phone, who paid for what, and who owes whom.
+- **Suggestions**: a "Suggest an edit" button on every page; the list lives under Suggestions in the footer.
 
 ## How it's built
 Plain HTML, CSS and JavaScript, hosted free on GitHub Pages. Data lives in a free Supabase database (one table, `records`). Without Supabase settings the site runs in demo mode in your browser.

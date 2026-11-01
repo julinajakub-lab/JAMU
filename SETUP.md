@@ -14,7 +14,7 @@ Supabase is free. Nobody needs a credit card.
 
 ## 2. Create the table
 1. In the left menu, open **SQL Editor**.
-2. Click **New query**, paste the whole content of [`supabase.sql`](supabase.sql), and click **Run**. You should see "Success. No rows returned".
+2. Click **New query**, paste the whole content of [`supabase.sql`](supabase.sql), and click **Run**. You should see "Success. No rows returned". This also creates the private photo storage (1 GB free, roughly 2,500 photos, since the site shrinks each photo before uploading).
 
 ## 3. Create the group login
 1. Left menu → **Authentication** → **Users** → **Add user** → **Create new user**.
