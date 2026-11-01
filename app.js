@@ -318,7 +318,7 @@ function shell(active, content) {
   <main><div class="wrap">${content}</div></main>
   <footer><div class="wrap">
     <span>Est. 2016 at JAMU, Brno. Survived together, friends ever since.</span>
-    <span class="row" style="gap:4px 12px"><a href="#ideas">Suggestions${openIdeas() ? ` (${openIdeas()} open)` : ''}</a><span>In memory of ${esc(GHOST.name)}, who is no longer with us. (She’s fine.)</span><button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
+    <span class="row" style="gap:4px 12px"><a href="#ideas">Suggestions${openIdeas() ? ` (${openIdeas()} open)` : ''}</a><span>In memory of ${esc(GHOST.name)}</span><button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
   </div></footer>
   <button class="suggest-fab" type="button" data-action="suggest">✎ Suggest an edit</button>`;
 }
@@ -404,7 +404,7 @@ function viewHome() {
     <section class="hero">
       <p class="eyebrow">Est. 2016 · JAMU, Brno</p>
       <h1>Společenstvo Inscenace</h1>
-      <p>Ten people who survived theatre management at JAMU together (plus one adopted from JevTech). Twice a year we leave the deadlines behind for a cottage in the woods to cook, walk, talk and recover.</p>
+      <p>Ten people who met studying theatre management at JAMU (plus one we adopted from JevTech). Twice a year we leave everyday life behind for a cottage in the woods, where we cook, walk and talk late into the night about our lives and the world.</p>
     </section>
 
     <div class="home-intro">
@@ -412,7 +412,7 @@ function viewHome() {
       <p class="eyebrow">Welcome, gang</p>
       <div class="letter-body">
         <p>This is our own little corner of the internet.</p>
-        <p>We met at JAMU in 2016, survived more deadlines than anyone should (and one whole international festival), and somehow ended up as family. A common enemy brought us together; love kept us there. Every time we sit at a cottage table, someone says “we should write this down”. So here it is: one place for everything that holds us together.</p>
+        <p>We met at JAMU in 2016, survived more deadlines than anyone should (and one whole international festival), and somewhere along the way became family. School brought us together. What we share keeps us there: new jobs and new homes, babies, worries, big questions about the world and small ones about dinner. Every time we sit at a cottage table, someone says “we should write this down”. So here it is: one place for everything that holds us together.</p>
         <ul class="letter-list">
           <li><a href="#next"><b>Plan the next trip.</b></a> Vote on dates, say if you’re coming, and find the cottage with one tap.</li>
           <li><a href="#archive"><b>Remember the old ones.</b></a> Every trip with its photos, stories and the quotes we’ll never live down.</li>
@@ -463,19 +463,18 @@ function viewGang() {
   const cards = MEMBERS.map(m => {
     const trips = done.filter(t => (t.attendees || []).includes(m.id)).length;
     const crowns = done.filter(t => t.organiser === m.id).length;
-    const badge = m.id === c.ruler ? '<span class="badge">♛ Reigning</span>' : m.id === c.heir ? '<span class="badge">Heir</span>' : m.id === 'dalibor' ? '<span class="badge">Adopted</span>' : '';
+    const badge = m.id === c.ruler ? '<p class="member-tag crown">♛ Reigning</p>' : m.id === c.heir ? '<p class="member-tag">Heir to the throne</p>' : '';
     return `
       <article class="panel member">
-        ${badge}
         <label class="av-edit" title="Add or change ${esc(m.short)}’s photo">
           ${avatar(m.id, 'lg')}
           <input type="file" accept="image/*" class="avatar-input" data-member="${m.id}" aria-label="Photo of ${esc(m.short)}">
           <span class="av-edit-label">${profilePhoto(m.id) ? 'Change' : '+ Photo'}</span>
         </label>
         <div style="min-width:0">
+          ${badge}
           <h3>${esc(m.name)}</h3>
           <p class="nick ${m.nick ? '' : 'unset'}">${m.nick ? esc(m.nick) : 'nickname not set yet'}</p>
-          ${m.jamu ? `<p class="jamu-role">${esc(m.jamu)}</p>` : ''}
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
           ${(m.links || []).length ? `<ul class="member-links">${m.links.map(l => `<li><a target="_blank" rel="noopener" href="${esc(l.url)}">${esc(l.title)} ↗</a></li>`).join('')}</ul>` : ''}
           <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>arrivals: pending</span>' : ''}</div>
@@ -487,19 +486,14 @@ function viewGang() {
     <section class="hero">
       <p class="eyebrow">10 active members · 1 no longer with us</p>
       <h1>The Gang</h1>
-      <p>Met at JAMU in 2016. Bonded by a common enemy (the workload, the deadlines, the festival). Stayed for the love.</p>
+      <p>Met at JAMU in 2016. It started with getting through school together. Today we know each other’s lives, and we keep showing up for them.</p>
     </section>
     <section class="gang">
       ${cards}
-      <article class="panel member ghost-card">
-        <span class="badge">In memoriam</span>
-        <span class="av lg">🕯️</span>
-        <div>
-          <h3>${esc(GHOST.name)}</h3>
-          <p class="nick unset">2016 – 2016-ish</p>
-          <p class="small" style="margin-top:6px">Is no longer with us. (She’s absolutely fine. She just never wanted to hang out. Some people survive JAMU differently.)</p>
-          <div class="tally"><span>0 trips</span><span>forever in our hearts</span></div>
-        </div>
+      <article class="panel ghost-card">
+        <span class="candle" aria-hidden="true">🕯️</span>
+        <h3>${esc(GHOST.name)}</h3>
+        <p class="eyebrow">In memoriam</p>
       </article>
     </section>
   </div>`;
@@ -620,7 +614,7 @@ function viewArchive() {
   return `
   <div class="stack-lg">
     <section class="hero">
-      <p class="eyebrow">Every weekend we survived</p><h1>The Archive</h1>
+      <p class="eyebrow">Every weekend we’ve shared</p><h1>The Archive</h1>
       <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who paid for what. Remember a trip that isn\u2019t here yet? Add it.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button></div>
     </section>
