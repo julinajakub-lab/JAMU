@@ -78,7 +78,7 @@ const exact = {
   'Loading… (still faster than the JAMU information system)': 'Načítám… (pořád rychleji než IS JAMU)',
   'Log out and try again': 'Odhlásit a zkusit znovu',
   'One quick question': 'Jedna rychlá otázka',
-  'So your votes and payments go under your name. This is remembered on this device.': 'Ať jsou tvoje hlasy a platby pod tvým jménem. Tohle zařízení si to zapamatuje.',
+  'So your votes and stories go under your name. This is remembered on this device.': 'Ať jsou tvoje hlasy a historky pod tvým jménem. Tohle zařízení si to zapamatuje.',
   'Iva is no longer with us. 🕯️ (Please pick someone who actually shows up.)': 'Iva už není mezi námi. 🕯️ (Vyber prosím někoho, kdo opravdu dorazí.)',
   'Nikol! You actually arrived! We’re so happy. 💌': 'Nikol! Ty jsi fakt dorazila! Máme obrovskou radost. 💌',
 
@@ -564,7 +564,7 @@ const patterns = [
   [/^(\d+) of (\d+) chronicles written$/, 'Hotové kroniky: $1 z $2'],
   [/^(.+) organised this one, so the page is theirs to finish\. Still missing:$/, 'Za tenhle výlet odpovídá $1, takže stránku dopisuje $1. Ještě chybí:'],
   [/^Suggestions \((\d+) open\)$/, 'Návrhy (otevřené: $1)'],
-  [/^This moves “(.+)” to the archive and hands over the crown\. Photos and expenses come next\.$/, 'Tímto se „$1“ přesune do archivu a předá se koruna. Fotky a výdaje přijdou potom.'],
+  [/^This moves “(.+)” to the archive and hands over the crown\. Then add the photos and stories on its archive page\.$/, 'Tímto se „$1“ přesune do archivu a předá se koruna. Pak na jeho stránku v archivu přidejte fotky a historky.'],
   [/^That didn’t save: (.*)\. Try again\?$/, 'Neuložilo se to: $1. Zkusit znovu?'],
   [/^That didn’t save: (.*)$/, 'Neuložilo se to: $1'],
   [/^The photo didn’t upload: (.*)$/, 'Fotka se nenahrála: $1'],

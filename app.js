@@ -290,7 +290,7 @@ function pickMe(force = false) {
     <div class="stack">
       <p class="eyebrow">One quick question</p>
       <h2>Who are you?</h2>
-      <p class="muted">So your votes and payments go under your name. This is remembered on this device.</p>
+      <p class="muted">So your votes and stories go under your name. This is remembered on this device.</p>
       <div class="checks">
         ${MEMBERS.map(m => `<button class="check" type="button" data-pick="${m.id}">${avatar(m.id, 'xs')} ${esc(m.short)}</button>`).join('')}
         <button class="check" type="button" data-pick="iva" style="opacity:.6">🕯️ ${esc(GHOST.name)}</button>
@@ -332,7 +332,7 @@ function closeModal() { $$('.modal-bg').forEach(m => m.remove()); sheetCtx = nul
 document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (sheetCtx) closeSheet(); else if (me()) closeModal(); });
 
 /* ---------------- layout ---------------- */
-const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['timeline', 'Timeline'], ['next', 'Next Trip'], ['archive', 'Archive'], ['after', 'After the Trip']];
+const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['timeline', 'Timeline'], ['next', 'Next Trip'], ['archive', 'Archive']];
 const PAGE_NAMES = { home: 'Home', gang: 'The Gang', timeline: 'Timeline', next: 'Next Trip', archive: 'Archive', after: 'After the Trip', ideas: 'Suggestions' };
 function route() { const h = (location.hash || '#home').slice(1); return h || 'home'; }
 
@@ -426,7 +426,6 @@ function viewHome() {
         <ul class="letter-list">
           <li><a href="#next"><b>Plan the next trip.</b></a> Vote on dates, say if you’re coming, and find the cottage with one tap.</li>
           <li><a href="#archive"><b>Remember the old ones.</b></a> Every trip with its photos, stories and the quotes we’ll never live down.</li>
-          <li><a href="#after"><b>Settle up without awkward messages.</b></a> Log who paid for what and the page works out who owes whom.</li>
         </ul>
         <p>It’s ours, so make it better. If something is missing or wrong, press “Suggest an edit” in the corner.</p>
         <p class="signature">Built for us with <svg class="heart" viewBox="0 0 24 24" aria-label="love" role="img"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.7 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg><br><span>Jakub (Honza Peniz)</span></p>
@@ -683,7 +682,7 @@ function tripRow(t) {
   return `
   <tr data-href="${href}">
     <td class="date">${esc(fmtRange(t.start, t.end))}</td>
-    <td><a class="trip-link" href="${isOpen(t) ? '#after' : href}">${esc(t.title || 'Untitled trip')}</a>${isOpen(t) ? ' <span class="chip maybe">Settling up</span>' : ''}${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
+    <td><a class="trip-link" href="${href}">${esc(t.title || 'Untitled trip')}</a>${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
     <td class="small"><span class="crown">♛</span> ${esc(nameOf(t.organiser))}${t.crowned ? ` <span class="muted">→ ${esc(nameOf(t.crowned))}</span>` : ''}</td>
     <td><div class="row" style="gap:6px"><div class="av-row">${(t.attendees || []).map(id => avatar(id, 'xs')).join('')}</div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol arrived!</span>' : ''}</div></td>
     <td class="small">${(() => { const n = S.photos.filter(p => p.trip_id === t.id).length; return n ? `${n} ${n === 1 ? 'photo' : 'photos'}` : safeUrl(t.photos_url) ? 'Album' : '<span class="muted">—</span>'; })()}</td>
@@ -1107,22 +1106,6 @@ function relicsSection(t) {
     </section>`;
 }
 
-function viewAfter() {
-  const t = openTrip();
-  if (!t) return `
-    <div class="stack-lg">
-      <section class="hero"><p class="eyebrow">After the trip</p><h1>Nothing to settle yet</h1>
-        <p>Welcome back home. This page is for the days right after a trip: share your photos, write down who paid for what, and the page works out who owes whom. Once everything is paid, the trip\u2019s king or queen closes the books and the trip moves to the archive.</p></section>
-      <div class="empty">
-        <div class="big">🧾</div>
-        <h3>No trip waiting to be settled</h3>
-        <p class="muted">When we get back from a trip, its king or queen presses “Wrap up &amp; crown” on the Next Trip page. Then the photos and expenses live here until the books are closed. Until then, rest and miss each other.</p>
-        <a class="btn primary" href="#next">Go to Next Trip</a>
-      </div>
-    </div>`;
-  return viewTrip(t, { after: true });
-}
-
 /* ---------------- settle up ---------------- */
 function settle(expenses) {
   const bal = {};
@@ -1518,7 +1501,7 @@ function wrapSheet(t) {
   const coming = Object.entries(t.rsvp || {}).filter(([, v]) => v === 'yes').map(([k]) => k);
   return {
     eyebrow: 'The crowning ceremony', kindIcon: 'crown', heading: t.title || 'Untitled trip',
-    lead: `This moves “${t.title}” to the archive and hands over the crown. Photos and expenses come next.`,
+    lead: `This moves “${t.title}” to the archive and hands over the crown. Then add the photos and stories on its archive page.`,
     primary: 'Long live the new monarch!', gold: true, draft: 'wrap-' + t.id,
     fields: [
       { key: 'when', type: 'dates', icon: 'cal', label: 'When', value: { start: t.start || '', end: t.end || '' }, check: chk.dates(true), live: live.dates },
@@ -1715,9 +1698,10 @@ document.addEventListener('click', async e => {
     return openSheet({ ...wrapSheet(t), onSave: async v => {
       const crowned = v.crowned, start = v.when.start;
       let end = v.when.end; if (!end || end < start) end = start;
-      await DB.update(t, { status: 'done', start, end, attendees: v.attendees, crowned, done_at: new Date().toISOString() });
+      const now = new Date().toISOString();
+      await DB.update(t, { status: 'done', start, end, attendees: v.attendees, crowned, done_at: now, settled_at: now });
       await saveCourt({ ruler: crowned, heir: v.heir || '' });
-      await load(); location.hash = '#after'; render();
+      await load(); location.hash = '#trip-' + t.id; render();
       toast(`Long live ${member(crowned)?.name}! 👑`);
     } });
   }
@@ -1823,7 +1807,6 @@ function render() {
   else if (r === 'gang') html = viewGang();
   else if (r === 'next') html = viewNext();
   else if (r === 'archive') html = viewArchive();
-  else if (r === 'after') html = viewAfter();
   else if (r === 'timeline') html = viewTimeline();
   else if (r === 'ideas') html = viewIdeas();
   else { active = 'home'; html = viewHome(); }
