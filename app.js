@@ -532,6 +532,7 @@ function viewGang() {
           <p class="nick ${m.nick ? '' : 'unset'}">${m.nick ? esc(m.nick) : 'nickname not set yet'}</p>
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
           ${(m.links || []).length ? `<ul class="member-links">${m.links.map(l => `<li><a target="_blank" rel="noopener" href="${esc(l.url)}">${esc(l.title)} ↗</a></li>`).join('')}</ul>` : ''}
+          ${m.honour ? `<p class="honour small"><span class="crown">★</span> <span>${esc(m.honour.text)}</span>${m.honour.url ? ` <a target="_blank" rel="noopener" href="${esc(m.honour.url)}"><span>${esc(m.honour.link || 'Open')}</span> ↗</a>` : ''}</p>` : ''}
           <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>arrivals: pending</span>' : ''}</div>
         </div>
       </article>`;
@@ -720,14 +721,24 @@ function tripRow(t) {
   </tr>`;
 }
 
+const driveImg = (id, w = 900) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
+function picksHtml(picks) {
+  return `<div class="picks">${picks.map((p, i) => `
+    <a class="pick${i === 0 ? ' big' : ''}" href="https://drive.google.com/file/d/${encodeURIComponent(p.id)}/view" target="_blank" rel="noopener">
+      <img src="${driveImg(p.id, i === 0 ? 1400 : 800)}" alt="${esc(p.caption || '')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://lh3.googleusercontent.com/d/${esc(p.id)}=w1000'">
+      ${p.caption ? `<span class="pick-cap" data-notr>${esc(p.caption)}</span>` : ''}
+    </a>`).join('')}</div>`;
+}
 function photosSection(t, albumUrl) {
   const pics = S.photos.filter(p => p.trip_id === t.id).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  const picks = relicFor(t)?.picks || [];
   return `
   <section class="panel stack" id="photos">
     <div class="spread">
-      <div><p class="eyebrow">Photos</p><h2>${pics.length ? `${pics.length} ${pics.length === 1 ? 'photo' : 'photos'}` : 'No photos yet'}</h2></div>
+      <div><p class="eyebrow">Photos</p><h2>${pics.length ? `${pics.length} ${pics.length === 1 ? 'photo' : 'photos'}` : picks.length ? 'The captain’s picks' : 'No photos yet'}</h2></div>
       ${albumUrl ? `<a class="btn sm" target="_blank" rel="noopener" href="${esc(albumUrl)}">Full album ↗</a>` : ''}
     </div>
+    ${picks.length ? picksHtml(picks) : ''}
     <label class="dropzone" for="photo-input" data-trip="${t.id}">
       <input type="file" id="photo-input" accept="image/*" multiple data-trip="${t.id}">
       <span class="dz-title">Add photos</span>

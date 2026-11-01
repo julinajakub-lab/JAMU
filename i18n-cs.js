@@ -45,6 +45,9 @@ const exact = {
   'on the water, four nights in camps.': 'po vodě, čtyři noci v kempech.',
   'Meeting point': 'Sraz',
   'Open in Maps': 'Otevřít v Mapách',
+  'The captain’s picks': 'Kapitánův výběr',
+  'The only one of us who ever uploaded his photos to our shared Drive (April 2019). Ten folders were made. One was filled.': 'Jediný z nás, kdo kdy nahrál fotky na náš společný Drive (duben 2019). Složek se založilo deset. Naplnila se jedna.',
+  'His folder': 'Jeho složka',
   // ---- login & frame
   'JAMU, class of 2016. Members only. Iva, if you’re reading this: the door is still open.': 'JAMU, ročník 2016. Jen pro členy. Ivo, jestli tohle čteš: dveře jsou pořád otevřené.',
   'Group password': 'Heslo party',
