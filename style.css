@@ -350,3 +350,8 @@ footer .wrap { padding-bottom: 72px; }
 .av-edit-label { font-size: .72rem; color: var(--accent); font-weight: 500; white-space: nowrap; }
 .av-edit:hover .av { box-shadow: 0 0 0 2px var(--accent); }
 .av-edit:focus-within .av { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Online artifacts on the timeline ---------- */
+.artifacts { width: 100%; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px; display: grid; gap: 6px; }
+.artifacts ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.artifacts a { font-size: .88rem; }

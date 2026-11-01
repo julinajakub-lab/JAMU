@@ -766,7 +766,13 @@ function viewTimeline() {
     { date: '2016-09-01', approx: true, kind: 'gang', title: 'We meet at JAMU', label: 'Where it all began', note: 'Theatre management, class of 2016. Dalibor joins from JevTech and gets adopted. Nobody knows yet what they signed up for.', fixed: true },
     { date: '2017-04-01', approx: true, kind: 'encounter', title: 'The 27th SETKÁNÍ/ENCOUNTER', label: 'First festival', note: 'Freshmen. We run errands, carry things, sleep very little and learn what an international theatre festival really costs (sleep, mostly).', fixed: true },
     { date: '2018-04-01', approx: true, kind: 'encounter', title: 'The 28th SETKÁNÍ/ENCOUNTER', label: 'Second year', note: 'More responsibility, same amount of sleep. We watch the older years and quietly think: next year it\u2019s us.', fixed: true },
-    { date: '2019-04-02', approx: true, kind: 'encounter', title: 'We run the 29th SETKÁNÍ/ENCOUNTER', label: 'Our masterpiece', who: ['julia', 'michaela', 'sylvie'], note: 'Our year as the main organisers, with Júlia as head of the festival. Theatre schools from all over Europe in Brno, and a team that came out of it as a family.', fixed: true },
+    { date: '2019-04-02', approx: true, kind: 'encounter', title: 'We run the 29th SETKÁNÍ/ENCOUNTER', label: 'Our masterpiece', who: ['julia', 'michaela', 'sylvie'], note: 'Our year as the main organisers, with Júlia as head of the festival. Theatre schools from all over Europe in Brno, and a team that came out of it as a family.', fixed: true,
+      links: [
+        { title: 'The official 2019 festival listing (ENCATC)', url: 'https://encatc.org/en/events/detail/the-international-festival-of-theatre-schools-setkani-encounter-2019/' },
+        { title: 'Our press conference, 17 March 2019 (Visegrad Fund)', url: 'https://www.visegradfund.org/events/press-conference-3' },
+        { title: 'Míša’s thesis: Head of Off-program 2019', url: 'https://theses.cz/id/29ozgh?lang=en' },
+        { title: 'Sylvie’s thesis: Head of Jury, Ensembles & Guests 2019', url: 'https://theses.cz/id/d0w4t7?lang=en' }
+      ] },
     ...S.milestones,
     ...doneTrips().filter(t => t.start).map(t => ({ date: t.start, kind: 'trip', title: t.title, note: t.place, trip: t, who: t.attendees || [] }))
   ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -785,6 +791,7 @@ function viewTimeline() {
           ${m.label ? `<span class="badge">${esc(m.label)}</span>` : ''}
           ${m.note ? `<p class="small">${esc(m.note)}</p>` : ''}
           ${(m.who || []).length ? `<div class="av-row">${m.who.map(id => avatar(id, 'xs')).join('')}</div>` : ''}
+          ${(m.links || []).filter(l => safeUrl(l.url)).length ? `<div class="artifacts"><p class="eyebrow">Found online</p><ul>${m.links.filter(l => safeUrl(l.url)).map(l => `<li><a target="_blank" rel="noopener" href="${esc(l.url)}">${esc(l.title || hostOf(l.url))} ↗</a></li>`).join('')}</ul></div>` : ''}
           ${!m.fixed && !m.trip ? `<div class="row tl-actions"><button class="btn sm ghost" type="button" data-action="edit-ms" data-ms="${m.id}">Edit</button><button class="btn sm ghost danger" type="button" data-action="del-ms" data-ms="${m.id}">Delete</button></div>` : ''}
         </div>
       </li>`;
@@ -811,11 +818,18 @@ function milestoneForm(m) {
     </div>
     <label>Special label (optional)<input name="label" id="m-label" value="${esc(m?.label)}" placeholder="First baby of the gang"></label>
     <div class="stack" style="gap:6px"><span class="small muted" style="font-weight:500">Who is it about</span>${memberChecks('who', m?.who || [])}</div>
+    <label>Links found online (optional, one per line: <span class="mono">Title | https://…</span>)<textarea name="links" id="m-links" style="min-height:64px" placeholder="Article about us | https://…">${esc((m?.links || []).map(l => (l.title ? l.title + ' | ' : '') + l.url).join('\n'))}</textarea></label>
     <label>A few words (optional)<textarea name="note" id="m-note" placeholder="Name, weight, who cried first…">${esc(m?.note)}</textarea></label>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
   </form>`;
 }
-const readMilestone = fd => ({ title: String(fd.get('title')).trim(), date: String(fd.get('date')), kind: String(fd.get('kind')), label: String(fd.get('label') || '').trim(), note: String(fd.get('note') || '').trim(), who: fd.getAll('who') });
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+const parseLinks = txt => String(txt || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+  const i = l.lastIndexOf('|');
+  const url = (i >= 0 ? l.slice(i + 1) : l).trim(), title = i >= 0 ? l.slice(0, i).trim() : '';
+  return { title, url };
+}).filter(l => safeUrl(l.url));
+const readMilestone = fd => ({ title: String(fd.get('title')).trim(), date: String(fd.get('date')), kind: String(fd.get('kind')), label: String(fd.get('label') || '').trim(), note: String(fd.get('note') || '').trim(), who: fd.getAll('who'), links: parseLinks(fd.get('links')) });
 
 /* ---------------- suggestions ---------------- */
 const openIdeas = () => S.suggestions.filter(s => !s.done).length;
