@@ -18,7 +18,7 @@ Supabase is free. Nobody needs a credit card.
 
 ## 3. Create the group login
 1. Left menu → **Authentication** → **Users** → **Add user** → **Create new user**.
-2. Email: `gang@jamu-trips.cz` (it doesn't need to be a real mailbox)
+2. Email: `jamu@2016.com` (it doesn't need to be a real mailbox)
 3. Password: the **group password** you want to give the gang.
 4. Tick **Auto Confirm User**, then click **Create user**.
 
