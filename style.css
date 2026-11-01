@@ -230,12 +230,6 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 
 /* ---------- Next trip ---------- */
 .addr { font: 500 1rem var(--f-body); user-select: all; white-space: pre-wrap; background: var(--field); border-radius: var(--r-field); padding: 12px 16px; }
-.opt { display: grid; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
-.opt:first-child { border-top: 0; padding-top: 0; }
-.best-tag { margin-left: 8px; font: 600 .66rem var(--f-body); letter-spacing: .05em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 4px; vertical-align: 2px; }
-.opt.chosen { background: var(--accent-soft); margin-inline: -24px; padding-inline: 24px; }
-.opt.chosen:first-child { margin-top: -6px; padding-top: 14px; }
-.opt-date { font-weight: 600; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--field); border-radius: 999px; flex-wrap: wrap; }
 .seg button { border: 0; background: transparent; color: var(--muted); font: 500 .8rem var(--f-body); min-height: 28px; padding: 0 12px; border-radius: 999px; cursor: pointer; transition: background .12s, color .12s; }
 .seg button.on { box-shadow: var(--shadow); }
@@ -655,3 +649,31 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 @media (max-width: 820px) { .glance { grid-template-columns: repeat(2, minmax(0, 1fr)); } .glance-cell:nth-child(3) { border-left: 0; } .glance-cell:nth-child(n+3) { border-top: 1px solid var(--line-2); } }
 @media (max-width: 340px) { .glance { grid-template-columns: 1fr; } .glance-cell { border-left: 0; border-top: 1px solid var(--line-2); } .glance-cell:first-child { border-top: 0; } }
 .step-tag { color: var(--accent); }
+
+/* ---------- Date poll ---------- */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.poll { display: grid; }
+.poll-row { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.3fr) auto; gap: 12px 24px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line-2); }
+.poll-row:first-child { border-top: 0; }
+.poll-row.best .poll-bar .yes, .poll-row.chosen .poll-bar .yes { background: var(--accent); }
+.poll-date { display: grid; gap: 2px; }
+.poll-date b { font: 400 1.2rem/1.25 var(--f-display); }
+.poll-flag { color: var(--accent); font-weight: 600; }
+.poll-result { display: grid; gap: 8px; min-width: 0; }
+.poll-bar { display: flex; height: 6px; border-radius: 999px; background: var(--field); overflow: hidden; }
+.poll-bar .yes { background: var(--accent-2, var(--accent)); opacity: .9; }
+.poll-bar .maybe { background: var(--maybe, #c9a227); opacity: .55; }
+.poll-voters { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.poll-voters .pv { display: inline-flex; margin-right: -4px; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); }
+.poll-voters .pv.maybe { opacity: .5; }
+.poll-voters .num { margin-left: 12px; }
+.poll-act { display: flex; align-items: center; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.icon-btn { min-width: 30px; padding-inline: 8px; }
+.date-set { display: grid; gap: 2px; padding: 16px 20px; border-radius: 14px; background: var(--accent-soft, var(--field)); }
+.date-set b { font: 400 1.6rem/1.2 var(--f-display); color: var(--accent); }
+.poll-past summary { cursor: pointer; color: var(--accent); font-weight: 500; font-size: .9rem; }
+.poll-past[open] summary { margin-bottom: 8px; }
+.propose { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.propose-label { font-weight: 600; font-size: .9rem; margin-right: 6px; }
+.propose label { flex: 0 1 170px; }
+@media (max-width: 720px) { .poll-row { grid-template-columns: 1fr; gap: 10px; } .poll-act { justify-content: space-between; } }

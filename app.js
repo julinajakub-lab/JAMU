@@ -35,6 +35,10 @@ function fmtRange(a, b) {
   if (s.getFullYear() === e.getFullYear()) return `${dm(s)} – ${fmtDate(b)}`;
   return `${fmtDate(a)} – ${fmtDate(b)}`;
 }
+function dayRange(a, b) {
+  const wd = d => parseDate(d)?.toLocaleDateString('cs-CZ', { weekday: 'long' }) || '';
+  return !b || a === b ? wd(a) : `${wd(a)} – ${wd(b)}`;
+}
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((d - t) / 864e5); }
 
 function avatar(id, size = '') {
@@ -110,11 +114,11 @@ function translateDOM(root) {
 let demo = null;
 function demoData() {
   if (demo) return demo;
-  try { demo = JSON.parse(ls.get('jamu-demo-v2')); } catch { demo = null; }
+  try { demo = JSON.parse(ls.get('jamu-demo-v3')); } catch { demo = null; }
   if (!Array.isArray(demo)) { demo = seedDemo(); saveDemo(); }
   return demo;
 }
-function saveDemo() { ls.set('jamu-demo-v2', JSON.stringify(demo)); }
+function saveDemo() { ls.set('jamu-demo-v3', JSON.stringify(demo)); }
 function seedDemo() {
   // Example content so the demo isn't empty. The real database starts empty.
   const now = new Date().toISOString();
@@ -125,9 +129,9 @@ function seedDemo() {
   return [
     { id: t, collection: 'trips', created_at: now, status: 'planning', title: 'Spring cottage weekend (example)', organiser: 'julia',
       place: 'Chata u Lesa (example)', address: 'Hlubočky 123, 783 61 Hlubočky', notes: 'Bring: slippers, a towel, a dish to share.\nKeys are under the gnome.', rsvp: { ladislav: 'yes', julia: 'yes', jakub: 'yes', nikol: 'love', sylvie: 'maybe', michaela: 'yes' } },
-    { id: o1, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 17), end: fri(4, 19), votes: { ladislav: 'yes', julia: 'yes', jakub: 'maybe', nikol: 'yes', michaela: 'yes' } },
-    { id: o2, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 24), end: fri(4, 26), votes: { ladislav: 'yes', julia: 'no', jakub: 'yes', sylvie: 'yes', adam: 'yes', viktoria: 'yes' } },
-    { id: o3, collection: 'date_options', created_at: now, trip_id: t, start: fri(5, 8), end: fri(5, 10), votes: { ladislav: 'maybe', alzbeta: 'yes' } },
+    { id: o1, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 16), end: fri(4, 18), votes: { ladislav: 'yes', julia: 'yes', jakub: 'maybe', nikol: 'yes', michaela: 'yes' } },
+    { id: o2, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 23), end: fri(4, 25), votes: { ladislav: 'yes', julia: 'no', jakub: 'yes', sylvie: 'yes', adam: 'yes', viktoria: 'yes' } },
+    { id: o3, collection: 'date_options', created_at: now, trip_id: t, start: fri(5, 7), end: fri(5, 9), votes: { ladislav: 'maybe', alzbeta: 'yes' } },
     { id: uid(), collection: 'milestones', created_at: now, date: `${y - 1}-06-12`, who: ['michaela'], kind: 'baby', title: 'Míša’s baby is born (example)', label: 'First baby of the gang', note: 'Replace this example with the real date.' },
     ...((window.JAMU_RELICS || []).filter(r => r.prepared).map(r => ({ id: uid(), collection: 'trips', created_at: now, status: 'done', ...r.prepared }))),
     { id: uid(), collection: 'milestones', created_at: now, date: '2019-06-20', who: [], kind: 'school', title: 'We survive JAMU (example)', label: '', note: 'State exams done. Nobody cried. (Everybody cried.)' }
@@ -518,17 +522,6 @@ function crownSteps(t) {
     { text: 'After the trip: crown the heir and close the books', later: true }
   ];
 }
-function gangSteps(t) {
-  const opts = S.options.filter(o => o.trip_id === t.id);
-  const rsvp = t.rsvp || {};
-  const voted = id => opts.some(o => (o.votes || {})[id]);
-  const steps = [];
-  if (!t.start) steps.push({ text: 'Vote on the weekends', missing: opts.length ? MEMBERS.filter(m => !voted(m.id)).map(m => m.id) : null, wait: !opts.length && 'Waiting for the dates.' });
-  steps.push({ text: 'Say if you’re coming', missing: MEMBERS.filter(m => !rsvp[m.id]).map(m => m.id) });
-  steps.push({ text: 'If you’re coming, sort out your ride', missing: noRide(t) });
-  steps.push({ text: 'After the trip: add what you paid for', later: true });
-  return steps;
-}
 function stepRow(s) {
   const state = s.later ? 'later' : s.done || (s.missing && !s.missing.length) ? 'done' : 'open';
   const mark = state === 'done' ? '✓' : state === 'later' ? '·' : '';
@@ -538,19 +531,15 @@ function stepRow(s) {
   return `<li class="duty ${state}"><span class="tick" aria-hidden="true">${mark}</span><span class="stack" style="gap:4px"><span>${s.text}</span>${who}</span></li>`;
 }
 function rolesPanel(t) {
+  const lead = leads(t);
+  const steps = crownSteps(t).map(stepRow).join('');
   return `
-    <section class="stack" id="roles">
-      <div><p class="eyebrow">Who does what</p><h2>Preparing the trip together</h2><p class="muted small">Who is responsible for what, and what’s still missing.</p></div>
-      <div class="two-col">
-        <section class="panel stack duties crown-duties">
-          <div><p class="eyebrow"><span class="crown">♛</span> The king or queen</p><h3>${esc(nameOf(t.organiser))}</h3><p class="muted small">Leads the preparations. If something’s unclear, ask here first.</p></div>
-          <ul class="duty-list">${crownSteps(t).map(stepRow).join('')}</ul>
-        </section>
-        <section class="panel stack duties">
-          <div><p class="eyebrow">Everyone else</p><h3>The whole gang</h3><p class="muted small">Each of us does this for ourselves. The king or queen sees who’s still missing.</p></div>
-          <ul class="duty-list">${gangSteps(t).map(stepRow).join('')}</ul>
-        </section>
+    <section class="panel stack duties crown-duties" id="roles">
+      <div class="spread">
+        <div><p class="eyebrow"><span class="crown">♛</span> The king or queen’s list</p><h2>${esc(nameOf(t.organiser))} takes care of this</h2><p class="muted small">The rest of us just follow the four steps above. If something’s unclear, ask the crown.</p></div>
       </div>
+      <ul class="duty-list">${steps}</ul>
+      ${lead ? `<div class="row"><button class="btn gold" type="button" data-action="wrap-up" data-trip="${t.id}">♛ Back home? Wrap up &amp; crown the next ruler</button></div>` : ''}
     </section>`;
 }
 
@@ -625,24 +614,31 @@ function viewNext() {
   const meId = me();
   const lead = leads(plan);
   const addr = plan.address || '';
+  const voted = id => opts.some(o => (o.votes || {})[id]);
+  const notVoted = MEMBERS.filter(m => !voted(m.id)).map(m => m.id);
   const optsHtml = opts.map(o => {
     const v = o.votes || {};
     const chosen = plan.start === o.start && plan.end === o.end;
-    const counts = { yes: 0, maybe: 0, no: 0 };
-    Object.values(v).forEach(x => { if (counts[x] !== undefined) counts[x]++; });
+    const isBest = best && best.id === o.id && score(o) > 0;
+    const ids = k => Object.keys(v).filter(id => v[id] === k);
+    const yes = ids('yes'), maybe = ids('maybe'), no = ids('no');
+    const pct = n => Math.round(n / MEMBERS.length * 100);
     return `
-      <div class="opt ${best && best.id === o.id && score(o) > 0 ? 'best' : ''} ${chosen ? 'chosen' : ''}">
-        <div class="spread">
-          <span class="opt-date">${esc(fmtRange(o.start, o.end))}${chosen ? ' ✅' : ''}${best && best.id === o.id && score(o) > 0 ? ' <span class="best-tag">Most votes</span>' : ''}</span>
-          <span class="row small num"><span class="chip yes">✓ ${counts.yes}</span><span class="chip maybe">? ${counts.maybe}</span><span class="chip no">✕ ${counts.no}</span></span>
+      <div class="poll-row${isBest ? ' best' : ''}${chosen ? ' chosen' : ''}">
+        <div class="poll-date">
+          <b>${esc(fmtRange(o.start, o.end))}</b>
+          <span class="muted small">${esc(dayRange(o.start, o.end))}${chosen ? ' · <span class="poll-flag">Chosen</span>' : isBest ? ' · <span class="poll-flag">Most votes</span>' : ''}</span>
         </div>
-        <div class="row">${Object.entries(v).map(([id, a]) => `<span class="chip ${a}">${esc(nameOf(id))}</span>`).join('') || '<span class="muted small">No votes yet.</span>'}</div>
-        <div class="spread">
-          ${meId ? `<span class="row small"><span class="muted">${esc(nameOf(meId))}:</span><span class="seg">${ANSWERS.map(([k, l]) => `<button type="button" class="${k} ${v[meId] === k ? 'on' : ''}" data-action="vote" data-opt="${o.id}" data-val="${k}">${l}</button>`).join('')}</span></span>` : '<span></span>'}
-          ${lead ? `<span class="row">
-            ${chosen ? '' : `<button class="btn sm" type="button" data-action="choose-date" data-opt="${o.id}">Pick this date</button>`}
-            <button class="btn sm ghost danger" type="button" data-action="del-opt" data-opt="${o.id}" aria-label="Remove this date">Remove</button>
-          </span>` : ''}
+        <div class="poll-result">
+          <div class="poll-bar" aria-hidden="true"><span class="yes" style="width:${pct(yes.length)}%"></span><span class="maybe" style="width:${pct(maybe.length)}%"></span></div>
+          <div class="poll-voters">
+            ${yes.map(id => `<span class="pv yes" title="${esc(nameOf(id))}">${avatar(id, 'xs')}</span>`).join('')}${maybe.map(id => `<span class="pv maybe" title="${esc(nameOf(id))}">${avatar(id, 'xs')}</span>`).join('')}
+            <span class="muted small num">${yes.length} yes${maybe.length ? ` · ${maybe.length} maybe` : ''}${no.length ? ` · ${no.length} no` : ''}</span>
+          </div>
+        </div>
+        <div class="poll-act">
+          ${meId ? `<span class="seg">${ANSWERS.map(([k, l]) => `<button type="button" class="${k} ${v[meId] === k ? 'on' : ''}" data-action="vote" data-opt="${o.id}" data-val="${k}">${l}</button>`).join('')}</span>` : ''}
+          ${lead ? `<span class="row" style="gap:4px">${chosen ? '' : `<button class="btn sm" type="button" data-action="choose-date" data-opt="${o.id}">Pick</button>`}<button class="btn sm ghost danger icon-btn" type="button" data-action="del-opt" data-opt="${o.id}" aria-label="Remove this date" title="Remove this date">✕</button></span>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -681,13 +677,18 @@ function viewNext() {
     </ol>
 
     <section class="panel stack" id="dates">
-      <div class="spread"><div><p class="eyebrow step-tag">Step 1 · Dates</p><h2>When can you come?</h2></div>${plan.start ? `<span class="chip yes">✓ ${esc(fmtRange(plan.start, plan.end))}</span>` : ''}</div>
-      ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
-      <div>${optsHtml || '<p class="muted">No dates proposed yet.</p>'}</div>
-      ${lead ? `<form id="opt-form" class="grid2" style="align-items:end">
-        <label>From<input type="date" name="start" id="opt-start" required></label>
-        <label>To<input type="date" name="end" id="opt-end"></label>
-        <button class="btn" type="submit">Propose these dates</button>
+      <div class="spread"><div><p class="eyebrow step-tag">Step 1 · Dates</p><h2>${plan.start ? 'The date is set' : 'When can you come?'}</h2></div></div>
+      ${plan.start ? `<div class="date-set"><b>${esc(fmtRange(plan.start, plan.end))}</b><span class="muted">${esc(dayRange(plan.start, plan.end))}</span></div>` : ''}
+      ${plan.start && opts.length ? `<details class="poll-past"><summary>How we voted</summary><div class="poll">${optsHtml}</div></details>` : `
+        ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
+        ${opts.length ? `<div class="poll">${optsHtml}</div>` : `<p class="muted">${lead ? 'No weekends yet. Propose the first one below.' : `${esc(nameOf(plan.organiser))} hasn’t proposed any weekends yet.`}</p>`}
+        ${opts.length && notVoted.length ? `<p class="small"><span class="muted">Haven’t voted yet:</span> ${notVoted.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>` : ''}`}
+      ${plan.start ? '' : lead ? `<form id="opt-form" class="propose">
+        <span class="propose-label">Propose a weekend</span>
+        <label><span class="sr">From</span><input type="date" name="start" id="opt-start" required aria-label="From"></label>
+        <span class="muted" aria-hidden="true">–</span>
+        <label><span class="sr">To</span><input type="date" name="end" id="opt-end" aria-label="To"></label>
+        <button class="btn" type="submit">+ Add</button>
       </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
     </section>
 
@@ -721,10 +722,6 @@ function viewNext() {
 
     ${rolesPanel(plan)}
 
-    <section class="panel spread">
-      <div class="stack" style="gap:4px"><h3>Back home already?</h3><p class="muted small">Wrap up the trip: confirm who came, crown the next monarch, then add photos and expenses.</p></div>
-      ${lead ? `<button class="btn gold" type="button" data-action="wrap-up" data-trip="${plan.id}">♛ Wrap up &amp; crown the next ruler</button>` : `<span class="muted small">${esc(nameOf(plan.organiser))} wraps it up and crowns the next ruler.</span>`}
-    </section>
   </div>`;
 }
 

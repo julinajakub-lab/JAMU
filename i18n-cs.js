@@ -446,6 +446,12 @@ const exact = {
   'Change album link': 'Změnit odkaz na album', 'Link the album': 'Připojit album', '+ Add expense': '+ Přidat výdaj',
   'Trip file created. Now propose some dates!': 'Výlet je založený. Teď navrhni termíny!', 'Trip file created. The gang can see it now.': 'Výlet je založený. Parta ho už vidí.',
   // ---- next trip at a glance + steps
+  'The date is set': 'Termín je daný', 'How we voted': 'Jak se hlasovalo', 'Chosen': 'Vybráno', 'Pick': 'Vybrat',
+  'No weekends yet. Propose the first one below.': 'Zatím žádné víkendy. Navrhni první níž.', 'Haven’t voted yet:': 'Ještě nehlasovali:',
+  'Propose a weekend': 'Navrhnout víkend', '+ Add': '+ Přidat',
+  'The king or queen’s list': 'Seznam krále nebo královny',
+  'The rest of us just follow the four steps above. If something’s unclear, ask the crown.': 'My ostatní jen projdeme čtyři kroky nahoře. Když je něco nejasné, ptej se koruny.',
+  '♛ Back home? Wrap up & crown the next ruler': '♛ Jste doma? Uzavřít výlet a korunovat dalšího',
   'Leads it': 'Vede ho', 'Still voting': 'Hlasuje se', 'Not decided yet': 'Zatím nerozhodnuto', 'Address below': 'Adresa je níž', 'Address comes later': 'Adresa přijde později',
   'tomorrow': 'zítra', 'today!': 'dnes!', 'under way': 'právě probíhá',
   'Step 1 · Dates': 'Krok 1 · Termín', 'Step 2 · Who’s coming': 'Krok 2 · Kdo jede', 'Step 3 · Transport': 'Krok 3 · Doprava', 'Step 4 · Getting there': 'Krok 4 · Cesta na chatu',
@@ -493,6 +499,9 @@ const exact = {
 };
 
 const patterns = [
+  [/^(.+) takes care of this$/, 'Tohle má na starosti $1'],
+  [/^(.+) hasn’t proposed any weekends yet\.$/, 'Zatím tu nejsou žádné víkendy. Navrhne je $1.'],
+  [/^(\d+) yes( · (\d+) maybe)?( · (\d+) no)?$/, (m, y, a, mb, b, n) => `ano ${y}${mb ? ` · možná ${mb}` : ''}${n ? ` · ne ${n}` : ''}`],
   [/^in (\d+) days$/, 'za $1 dní'],
   [/^(\d+) weekends? in the vote$/, (m, n) => `${n} ${plural(n, 'víkend', 'víkendy', 'víkendů')} ve hře`],
   [/^\+ (\d+) maybe$/, '+ $1 možná'],
