@@ -350,7 +350,7 @@ function shell(active, content) {
   <main><div class="wrap">${content}</div></main>
   <footer><div class="wrap">
     <span>Est. 2016 at JAMU, Brno. Survived together, friends ever since.</span>
-    <span class="row" style="gap:4px 12px"><a href="#ideas">Suggestions${openIdeas() ? ` (${openIdeas()} open)` : ''}</a><span>In memory of ${esc(GHOST.name)}</span><button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
+    <span class="row" style="gap:4px 12px"><a href="#ideas">Suggestions${openIdeas() ? ` (${openIdeas()} open)` : ''}</a><span data-notr>In memoriam ${esc(GHOST.name)}</span><button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
   </div></footer>
   <button class="suggest-fab" type="button" data-action="suggest">✎ Suggest an edit</button>`;
 }
@@ -445,7 +445,7 @@ function viewHome() {
     <section>
       <div class="section-head"><h2>By the numbers</h2></div>
       <div class="kpis">
-        <div class="kpi"><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
+        <div class="kpi"><b>${done.length}</b><span class="muted small">${done.length === 1 ? 'trip in the archive' : done.length > 1 && done.length < 5 ? 'few trips in the archive' : 'trips in the archive'}</span></div>
         <div class="kpi"><b>${together}</b><span class="muted small">years since we met at JAMU</span></div>
         <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU (graduation after ENCOUNTER 2019)</span></div>
         <div class="kpi"><b>${nikolCame}×</b><span class="muted small">Nikol arrived. About five years ago, and nobody remembers which trip.</span></div>
@@ -495,7 +495,7 @@ function taskBoard(tasks) {
   };
   return `
     <section class="panel stack" id="tasks">
-      <div><p class="eyebrow">For all of us</p><h2>What the gang owes right now</h2><p class="muted small">Everything we all have to do, in plain sight. Done ones go green; the names still missing stay here until they do it.</p></div>
+      <div><p class="eyebrow">For all of us</p><h2>What the gang owes right now</h2><p class="muted small">A few small things we all do for each other. Whoever’s done turns green. Whoever isn’t, we wait for patiently. (Nikol, we’re used to it.)</p></div>
       <div class="gtasks">${tasks.map(row).join('')}</div>
     </section>`;
 }
@@ -506,7 +506,7 @@ function viewGang() {
   const tasks = groupTasks();
   const cards = MEMBERS.map(m => {
     const owes = tasks.filter(t => t.missing.includes(m.id)).length;
-    const status = tasks.some(t => t.who.includes(m.id)) ? `<p class="owes ${owes ? 'open' : 'clear'} small">${owes ? `${owes} ${owes === 1 ? 'task waiting' : 'tasks waiting'}` : '✓ All done'}</p>` : '';
+    const status = '';
     const trips = done.filter(t => (t.attendees || []).includes(m.id)).length;
     const crowns = done.filter(t => t.organiser === m.id).length;
     const badge = m.id === c.ruler ? '<p class="member-tag crown">♛ Reigning</p>' : m.id === c.heir ? '<p class="member-tag">Heir to the throne</p>' : '';
@@ -587,10 +587,10 @@ function rolesPanel(t) {
   return `
     <section class="panel stack duties crown-duties" id="roles">
       <div class="spread">
-        <div><p class="eyebrow"><span class="crown">♛</span> The king or queen’s list</p><h2>${esc(nameOf(t.organiser))} takes care of this</h2><p class="muted small">The rest of us just follow the four steps above. If something’s unclear, ask the crown.</p></div>
+        <div><p class="eyebrow"><span class="crown">♛</span> The king or queen’s list</p><h2>${esc(nameOf(t.organiser))} takes care of this</h2><p class="muted small">The rest of us just follow the two steps above. If something’s unclear, ask the crown.</p></div>
       </div>
       <ul class="duty-list">${steps}</ul>
-      ${lead ? `<div class="row"><button class="btn gold" type="button" data-action="wrap-up" data-trip="${t.id}">♛ Back home? Wrap up &amp; crown the next ruler</button></div>` : ''}
+      ${lead && t.start && daysUntil(t.start) <= 0 ? `<div class="row"><button class="btn gold" type="button" data-action="wrap-up" data-trip="${t.id}">♛ Back home? Wrap up &amp; crown the next ruler</button></div>` : ''}
     </section>`;
 }
 
@@ -626,7 +626,7 @@ function transportPanel(t, cottageHtml = '') {
     : '<p class="small solved">✓ Transport is sorted. Everyone who’s coming has a way there.</p>';
   return `
       <section class="panel stack" id="transport">
-        <div class="spread"><div><p class="eyebrow step-tag">Step 3 · Getting there</p><h2>How we get to the cottage</h2></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
+        <div class="spread"><div><p class="eyebrow step-tag">Step 2 · Getting there</p><h2>How we get to the cottage</h2></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
         ${cottageHtml}
         ${status}
         <div class="cars">${carHtml || '<p class="muted">No cars offered yet. Got one? Offer it below.</p>'}</div>
@@ -737,22 +737,15 @@ function viewNext() {
     <section class="hero">
       <p class="eyebrow">Next trip</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
-      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates, the cottage and the address. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.</p>
+      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates and the cottage. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.</p>
       ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
 
     ${overview}
-    ${handover()}
     ${todoBlock('next')}
 
-    <ol class="howto" aria-label="How this page works">
-      <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
-      <li><b>Say if you’re coming</b><span>Once the date is picked, answer with one tap. You can change it any time.</span></li>
-      <li><b>Get there</b><span>Offer your car or hop in with someone. On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
-    </ol>
-
     <section class="panel stack" id="dates">
-      <div class="spread"><div><p class="eyebrow step-tag">${plan.start ? 'Step 2 · Who’s coming' : 'Step 1 · Dates'}</p><h2>${plan.start ? 'The date is set. Are you coming?' : 'When can you come?'}</h2></div></div>
+      <div class="spread"><div><p class="eyebrow step-tag">${plan.start ? 'Step 1 · Who’s coming' : 'Step 1 · Dates'}</p><h2>${plan.start ? 'The date is set. Are you coming?' : 'When can you come?'}</h2></div></div>
       ${plan.start ? `<div class="date-set"><b>${esc(fmtRange(plan.start, plan.end))}</b><span class="muted">${esc(dayRange(plan.start, plan.end))}</span></div>` : ''}
       ${plan.start ? rsvpHtml : ''}
       ${plan.start && opts.length ? `<details class="poll-past"><summary>How we voted</summary><div class="poll">${optsHtml}</div></details>` : `
@@ -795,31 +788,7 @@ function viewArchive() {
         <p class="muted">Our memory is worse than our project documentation. Add the trips you remember, one row at a time.</p>
         <button class="btn primary" type="button" data-action="add-past">+ Add the first trip</button>
       </div>`}
-    ${chroniclePanel()}
   </div>`;
-}
-function chroniclePanel() {
-  const owers = MEMBERS.filter(m => PAST_RULERS.includes(m.id) || tripsBy(m.id).length);
-  const written = owers.filter(m => chronicleState(m.id) === 'done').length;
-  const STATE = { todo: ['Not started yet', 'no'], writing: ['Writing', 'maybe'], done: ['Written ✓', 'yes'] };
-  const rows = owers.map(m => {
-    const [label, cls] = STATE[chronicleState(m.id)] || STATE.todo;
-    const n = tripsBy(m.id).length;
-    return `<li class="chron"><span class="row" style="gap:8px">${avatar(m.id, 'xs')}<b>${esc(m.short)}</b>${n ? `<span class="muted small num">${n} ${n === 1 ? 'trip' : 'trips'}</span>` : ''}</span><span class="chip ${cls}">${label}</span></li>`;
-  });
-  const waiting = MEMBERS.filter(m => !owers.includes(m)).map(m => {
-    const note = m.id === court().ruler ? (m.id === 'julia' ? 'Reigns now. Her chronicle comes after the next trip. (SETKÁNÍ 2019 doesn’t count. Or does it?)' : 'Reigns now. The chronicle comes after the next trip.')
-      : m.id === 'dalibor' ? 'Hasn’t reigned yet. The crown is waiting for him.' : 'Hasn’t reigned yet.';
-    return `<li class="chron"><span class="row" style="gap:8px">${avatar(m.id, 'xs')}<b>${esc(m.short)}</b></span><span class="muted small">${note}</span></li>`;
-  });
-  return `
-    <section class="panel stack">
-      <div class="spread">
-        <div><p class="eyebrow">The chronicle of crowns</p><h2 class="num">${written} of ${owers.length} chronicles written</h2></div>
-      </div>
-      <p class="muted small">Whoever organised a trip writes its page here: when, where, the photos and the story. Everyone who has worn the crown adds their own trips. From now on, each trip’s organiser finishes its page after the crowning.</p>
-      <ul class="chrons">${rows.join('')}${waiting.join('')}</ul>
-    </section>`;
 }
 function tripRow(t) {
   const href = '#trip-' + esc(t.id);
@@ -1259,7 +1228,7 @@ function viewAfter() {
       <div class="empty">
         <div class="big">🧾</div>
         <h3>No trip waiting to be settled</h3>
-        <p class="muted">When you get back from a trip, press “Wrap up” on the Next Trip page. Its photos and expenses show up here until its king or queen closes the books.</p>
+        <p class="muted">When we get back from a trip, its king or queen presses “Wrap up &amp; crown” on the Next Trip page. Then the photos and expenses live here until the books are closed. Until then, rest and miss each other.</p>
         <a class="btn primary" href="#next">Go to Next Trip</a>
       </div>
     </div>`;
