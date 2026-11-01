@@ -483,7 +483,7 @@ function viewHome() {
           <li><a href="#after"><b>Settle up without awkward messages.</b></a> Log who paid for what and the page works out who owes whom.</li>
         </ul>
         <p>It’s ours, so make it better. If something is missing or wrong, press “Suggest an edit” in the corner.</p>
-        <p class="signature">Built for us with <span class="heart">♥</span><br><span>Jakub (Honza Peniz)</span></p>
+        <p class="signature">Built for us with <svg class="heart" viewBox="0 0 24 24" aria-label="love" role="img"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.7 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg><br><span>Jakub (Honza Peniz)</span></p>
       </div>
     </section>
 

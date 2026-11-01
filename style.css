@@ -451,7 +451,9 @@ body.has-sheet { overflow: hidden; }
 .letter-list a:hover { text-decoration-color: var(--accent); }
 .signature { font: italic 400 1.35rem var(--f-display); line-height: 1.25; margin-top: 4px; }
 .signature span { font: 400 .85rem var(--f-body); color: var(--muted); font-style: normal; }
-.heart { color: #c2435b; font-style: normal; }
+.heart { width: 1.05em; height: 1.05em; vertical-align: -0.12em; margin-left: .12em; fill: #e0314f; filter: drop-shadow(0 1px 2px rgba(224, 49, 79, .35)); transform-origin: center; animation: heartbeat 2.4s ease-in-out infinite; }
+@keyframes heartbeat { 0%, 60%, 100% { transform: scale(1); } 15% { transform: scale(1.18); } 30% { transform: scale(1); } 45% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .heart { animation: none; } }
 
 /* ---------- Start here to-dos ---------- */
 .todos { list-style: none; margin: 0; padding: 0; background: var(--surface); border-radius: var(--r-card); box-shadow: var(--e1); }
