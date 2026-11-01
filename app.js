@@ -193,6 +193,30 @@ const planning = () => S.trips.find(t => t.status === 'planning');
 const tripSortKey = t => t.start || t.done_at || t.created_at || '';
 const doneTrips = () => S.trips.filter(t => t.status === 'done').sort((a, b) => tripSortKey(b).localeCompare(tripSortKey(a)));
 
+/* ---------------- the chronicle duty ----------------
+   Whoever organised a trip writes its archive page: dates, place, photos and the story.
+   Past monarchs add their old trips themselves; from now on every wrapped-up trip lands on its organiser. */
+const PAST_RULERS = window.JAMU_PAST_RULERS || [];
+function chronicleGaps(t) {
+  const gaps = [];
+  if (!t.start) gaps.push('dates');
+  if (!t.place) gaps.push('place');
+  if (!safeUrl(t.photos_url) && !S.photos.some(p => p.trip_id === t.id)) gaps.push('photos');
+  if (!(t.story || '').trim()) gaps.push('story');
+  return gaps;
+}
+const tripsBy = id => doneTrips().filter(t => t.organiser === id);
+const chroniclesClosed = () => court().chronicles || {};
+function chronicleState(id) {
+  const mine = tripsBy(id);
+  const open = mine.filter(t => chronicleGaps(t).length);
+  const owesOld = PAST_RULERS.includes(id) && !chroniclesClosed()[id];
+  if (!mine.length && owesOld) return 'todo';
+  if (open.length || owesOld) return 'writing';
+  return mine.length ? 'done' : 'none';
+}
+const gapChips = t => chronicleGaps(t).map(g => `<span class="chip">${g}</span>`).join(' ');
+
 async function act(fn, okMsg) {
   try { await fn(); await load(); render(); if (okMsg) toast(okMsg); }
   catch (e) { console.error(e); toast('That didn’t save: ' + (e.message || 'unknown error') + '. Try again?'); }
@@ -352,6 +376,18 @@ function todoBlock() {
   const items = [];
   const add = (text, btn) => items.push(`<li class="todo"><span>${text}</span>${btn}</li>`);
   if (!m) add('First, tell the site who you are, so your votes and photos get your name.', `<button class="btn primary sm" type="button" data-action="switch-me">Pick my name</button>`);
+  if (m) {
+    const mine = tripsBy(m);
+    mine.filter(t => chronicleGaps(t).length).forEach(t =>
+      add(`♛ You organised <b>${esc(t.title || 'Untitled trip')}</b>, so its archive page is yours to finish. Still missing: ${gapChips(t)}`,
+        `<button class="btn primary sm" type="button" data-action="edit-trip" data-trip="${t.id}">Finish the page</button>`));
+    if (PAST_RULERS.includes(m) && !chroniclesClosed()[m]) {
+      if (!mine.length) add('♛ You’ve worn the crown before, so the chronicle of your reign is yours to write. Add the trip you organised: when, where, the photos and what happened.',
+        `<button class="btn primary sm" type="button" data-action="add-my-trip">Add my trip</button>`);
+      else add('♛ Did you organise any other trip before this website existed? Add it too, or tell us that was all.',
+        `<span class="row" style="gap:6px"><button class="btn sm" type="button" data-action="add-my-trip">Add another trip</button><button class="btn sm ghost" type="button" data-action="chronicle-done">That was all of them</button></span>`);
+    }
+  }
   if (plan) {
     const opts = S.options.filter(o => o.trip_id === plan.id);
     if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<a class="btn primary sm" href="#next">Vote on dates</a>`);
@@ -362,7 +398,7 @@ function todoBlock() {
   if (last) {
     add(`Do you have nice photos from <b>${esc(last.title)}</b>? Share them with everyone.`, `<button class="btn primary sm" type="button" data-action="share-photos" data-trip="${last.id}">Share photos</button>`);
     add(`Did you pay for something on <b>${esc(last.title)}</b>? Add it and the page works out who owes whom.`, `<a class="btn sm" href="#trip-${esc(last.id)}">Add an expense</a>`);
-  } else {
+  } else if (!(m && PAST_RULERS.includes(m) && !chroniclesClosed()[m])) {
     add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
   }
   add('Spotted a mistake, or have an idea for the site?', `<button class="btn sm" type="button" data-action="suggest">Suggest an edit</button>`);
@@ -634,7 +670,31 @@ function viewArchive() {
         <p class="muted">Our memory is worse than our project documentation. Add the trips you remember, one row at a time.</p>
         <button class="btn primary" type="button" data-action="add-past">+ Add the first trip</button>
       </div>`}
+    ${chroniclePanel()}
   </div>`;
+}
+function chroniclePanel() {
+  const owers = MEMBERS.filter(m => PAST_RULERS.includes(m.id) || tripsBy(m.id).length);
+  const written = owers.filter(m => chronicleState(m.id) === 'done').length;
+  const STATE = { todo: ['Not started yet', 'no'], writing: ['Writing', 'maybe'], done: ['Written ✓', 'yes'] };
+  const rows = owers.map(m => {
+    const [label, cls] = STATE[chronicleState(m.id)] || STATE.todo;
+    const n = tripsBy(m.id).length;
+    return `<li class="chron"><span class="row" style="gap:8px">${avatar(m.id, 'xs')}<b>${esc(m.short)}</b>${n ? `<span class="muted small num">${n} ${n === 1 ? 'trip' : 'trips'}</span>` : ''}</span><span class="chip ${cls}">${label}</span></li>`;
+  });
+  const waiting = MEMBERS.filter(m => !owers.includes(m)).map(m => {
+    const note = m.id === court().ruler ? (m.id === 'julia' ? 'Reigns now. Her chronicle comes after the next trip. (SETKÁNÍ 2019 doesn’t count. Or does it?)' : 'Reigns now. The chronicle comes after the next trip.')
+      : m.id === 'dalibor' ? 'Hasn’t reigned yet. The crown is waiting for him.' : 'Hasn’t reigned yet.';
+    return `<li class="chron"><span class="row" style="gap:8px">${avatar(m.id, 'xs')}<b>${esc(m.short)}</b></span><span class="muted small">${note}</span></li>`;
+  });
+  return `
+    <section class="panel stack">
+      <div class="spread">
+        <div><p class="eyebrow">The chronicle of crowns</p><h2 class="num">${written} of ${owers.length} chronicles written</h2></div>
+      </div>
+      <p class="muted small">Whoever organised a trip writes its page here: when, where, the photos and the story. Everyone who has worn the crown adds their own trips. From now on, each trip’s organiser finishes its page after the crowning.</p>
+      <ul class="chrons">${rows.join('')}${waiting.join('')}</ul>
+    </section>`;
 }
 function tripRow(t) {
   const href = '#trip-' + esc(t.id);
@@ -944,6 +1004,7 @@ function viewTrip(t, { after = false } = {}) {
       <p>${esc(fmtRange(t.start, t.end))}${t.place ? ' · ' + esc(t.place) : ''}</p>
       <p class="small"><span class="crown">♛</span> Organised by <b>${esc(member(t.organiser)?.name || '—')}</b>${t.crowned ? ` · crowned at the end: <b>${esc(member(t.crowned)?.name)}</b>` : ''}</p>
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${t.id}">Edit</button>${after ? `<a class="btn sm ghost" href="#trip-${esc(t.id)}">Permalink</a>` : ''}</div>
+      ${chronicleGaps(t).length ? `<p class="hint">${esc(nameOf(t.organiser))} organised this one, so the page is theirs to finish. Still missing: ${gapChips(t)}</p>` : ''}
       ${after ? `<p class="hint">Just got back? Two things to do: <button class="linkish" type="button" data-action="share-photos" data-trip="${t.id}">share your photos</button> and <button class="linkish" type="button" data-action="scroll" data-to="exp-form">add what you paid for</button>. The page works out who owes whom.</p>` : ''}
     </section>
 
@@ -1033,7 +1094,7 @@ function settle(expenses) {
 }
 
 /* ---------------- forms ---------------- */
-function tripForm(t, mode) {
+function tripForm(t, mode, preset = {}) {
   // mode: 'plan' (upcoming) or 'past'
   const past = mode === 'past';
   return `
@@ -1042,7 +1103,7 @@ function tripForm(t, mode) {
     <label>Name of the trip<input name="title" id="f-title" required value="${esc(t?.title)}" placeholder="${past ? 'e.g. The one where the stove exploded' : 'e.g. Spring weekend at the cottage'}"></label>
     <div class="grid2">
       <label>Place<input name="place" id="f-place" value="${esc(t?.place)}" placeholder="Chata u Lesa"></label>
-      <label>Organiser<select name="organiser" id="f-org">${memberOptions(t?.organiser || court().ruler)}</select></label>
+      <label>Organiser<select name="organiser" id="f-org">${memberOptions(t?.organiser || preset.organiser || court().ruler)}</select></label>
     </div>
     <label>Address (for navigation)<input name="address" id="f-address" value="${esc(t?.address)}" placeholder="Street, number, town"></label>
     <div class="grid2">
@@ -1114,6 +1175,17 @@ document.addEventListener('click', async e => {
     await DB.add('trips', { ...readTripForm(fd, true), status: 'done' });
     await load(); render(); toast('Added to the archive 🎟️');
   });
+  if (a === 'add-my-trip') {
+    const m = me(); if (!m) return pickMe(true);
+    return openModal(tripForm(null, 'past', { organiser: m }), async fd => {
+      await DB.add('trips', { ...readTripForm(fd, true), status: 'done' });
+      await load(); render(); toast('Your reign is in the chronicle ♛');
+    });
+  }
+  if (a === 'chronicle-done') {
+    const m = me(); if (!m) return;
+    return act(() => saveCourt({ chronicles: { ...chroniclesClosed(), [m]: true } }), 'Thank you. The chronicle is grateful ♛');
+  }
   if (a === 'edit-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
     const past = t.status === 'done';
