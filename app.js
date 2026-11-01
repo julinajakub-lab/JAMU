@@ -41,7 +41,12 @@ function avatar(id, size = '') {
   const m = member(id);
   if (!m) return `<span class="av ${size}" style="--h:0">?</span>`;
   const ini = m.name.split(' ').map(w => w[0]).join('').slice(0, 2);
-  return `<span class="av ${size}" style="--h:${m.hue}" title="${esc(m.name)}" aria-hidden="true">${esc(ini)}</span>`;
+  const pic = profilePhoto(id);
+  return `<span class="av ${size}${pic ? ' has-pic' : ''}" style="--h:${m.hue}" title="${esc(m.name)}" aria-hidden="true">${pic ? `<img data-photo="${esc(pic)}" alt="">` : esc(ini)}</span>`;
+}
+function profilePhoto(id) {
+  const list = (S.profiles || []).filter(p => p.member === id).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  return list[0]?.path || '';
 }
 function memberOptions(selected, { blank = false } = {}) {
   return (blank ? `<option value="">— not decided —</option>` : '') +
@@ -115,7 +120,7 @@ const DB = {
 };
 function strip(r) { const { id, collection, created_at, ...d } = r; return d; }
 
-let S = { trips: [], options: [], expenses: [], settings: null };
+let S = { trips: [], options: [], expenses: [], settings: null, profiles: [], photos: [], milestones: [], suggestions: [] };
 async function load() {
   const all = await DB.all();
   S = {
@@ -125,6 +130,7 @@ async function load() {
     milestones: all.filter(r => r.collection === 'milestones'),
     suggestions: all.filter(r => r.collection === 'suggestions'),
     photos: all.filter(r => r.collection === 'photos'),
+    profiles: all.filter(r => r.collection === 'profiles'),
     settings: all.find(r => r.collection === 'settings') || null
   };
 }
@@ -406,7 +412,11 @@ function viewGang() {
     return `
       <article class="panel member">
         ${badge}
-        ${avatar(m.id, 'lg')}
+        <label class="av-edit" title="Add or change ${esc(m.short)}’s photo">
+          ${avatar(m.id, 'lg')}
+          <input type="file" accept="image/*" class="avatar-input" data-member="${m.id}" aria-label="Photo of ${esc(m.short)}">
+          <span class="av-edit-label">${profilePhoto(m.id) ? 'Change' : '+ Photo'}</span>
+        </label>
         <div style="min-width:0">
           <h3>${esc(m.name)}</h3>
           <p class="nick ${m.nick ? '' : 'unset'}">${m.nick ? esc(m.nick) : 'nickname not set yet'}</p>
@@ -639,6 +649,38 @@ function shrink(file, maxSide, quality) {
     img.src = url;
   });
 }
+function squareCrop(file, side) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const n = Math.min(img.naturalWidth, img.naturalHeight);
+      const c = document.createElement('canvas'); c.width = c.height = side;
+      c.getContext('2d').drawImage(img, (img.naturalWidth - n) / 2, (img.naturalHeight - n) / 2, n, n, 0, 0, side, side);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('Could not read this image')), 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read ' + file.name)); };
+    img.src = url;
+  });
+}
+async function uploadAvatar(memberId, file) {
+  toast('Uploading photo…');
+  try {
+    const blob = await squareCrop(file, LIVE ? 480 : 240);
+    let path;
+    if (LIVE) {
+      path = `avatars/${memberId}-${uid()}.jpg`;
+      const { error } = await sb.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' });
+      if (error) throw error;
+    } else path = await blobToDataUrl(blob);
+    const old = S.profiles.filter(p => p.member === memberId);
+    await DB.add('profiles', { member: memberId, path, by: me() || '' });
+    for (const o of old) { if (LIVE && !o.path.startsWith('data:')) await sb.storage.from('photos').remove([o.path]); await DB.remove(o); }
+    await load(); render();
+    toast(memberId === 'nikol' ? 'Photo saved. Finally, proof that Nikol exists. 📸' : `Looking good, ${nameOf(memberId)}!`);
+  } catch (e) { console.error(e); toast('The photo didn’t upload: ' + (e.message || 'unknown error')); }
+}
 const blobToDataUrl = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
 async function uploadPhotos(tripId, files) {
   files = [...files].filter(f => f.type.startsWith('image/'));
@@ -666,6 +708,7 @@ async function uploadPhotos(tripId, files) {
 }
 document.addEventListener('change', e => {
   if (e.target.id === 'photo-input') uploadPhotos(e.target.dataset.trip, e.target.files);
+  if (e.target.classList.contains('avatar-input') && e.target.files[0]) uploadAvatar(e.target.dataset.member, e.target.files[0]);
 });
 document.addEventListener('dragover', e => { const z = e.target.closest('.dropzone'); if (z) { e.preventDefault(); z.classList.add('over'); } });
 document.addEventListener('dragleave', e => { const z = e.target.closest('.dropzone'); if (z) z.classList.remove('over'); });

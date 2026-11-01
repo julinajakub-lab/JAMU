@@ -341,3 +341,12 @@ footer .wrap { padding-bottom: 72px; }
 .timeline { max-width: 760px; margin-inline: auto; width: 100%; }
 .howto { max-width: none; }
 .kpi { text-align: center; justify-items: center; }
+
+/* ---------- Profile photos ---------- */
+.av.has-pic { background: var(--head); overflow: hidden; }
+.av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.av-edit { position: relative; display: grid; justify-items: center; gap: 6px; cursor: pointer; color: inherit; font-weight: 400; }
+.av-edit input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.av-edit-label { font-size: .72rem; color: var(--accent); font-weight: 500; white-space: nowrap; }
+.av-edit:hover .av { box-shadow: 0 0 0 2px var(--accent); }
+.av-edit:focus-within .av { outline: 2px solid var(--accent); outline-offset: 2px; }
