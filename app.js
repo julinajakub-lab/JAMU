@@ -237,8 +237,15 @@ function renderLogin() {
     const pw = $('#pw').value;
     let ok = false;
     if (LIVE) {
-      const { error } = await sb.auth.signInWithPassword({ email: C.groupEmail, password: pw });
+      let error;
+      try { ({ error } = await sb.auth.signInWithPassword({ email: C.groupEmail, password: pw })); }
+      catch (e) { error = e; }
       ok = !error;
+      // Anything other than a plain wrong password: show the real reason, so it can be fixed.
+      if (error && !/invalid login credentials/i.test(error.message || '')) {
+        $('#login-err').textContent = 'Login problem (not your password): ' + (error.message || error);
+        return;
+      }
     } else ok = pw === (C.demoPassword || 'jamu2016');
     if (ok) { ls.set('jamu-auth', '1'); start(); }
     else { $('#login-err').textContent = tr(WRONG[wrongCount++ % WRONG.length]); $('#pw').select(); }
