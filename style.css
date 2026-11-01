@@ -627,11 +627,14 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 .duty.later { color: var(--muted); }
 .duty.later .tick { border-style: dashed; }
 .crown-duties { border-top: 3px solid var(--crown); }
-.tasks { display: grid; }
-.task { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--line-2); }
-.task:first-child { border-top: 0; }
-.task.free b::after { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--maybe, var(--accent)); margin-left: 8px; vertical-align: middle; }
-.person-chip { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; padding: 2px 10px 2px 2px; border-radius: 999px; background: var(--field); }
+.cars { display: grid; gap: 10px; }
+.car { display: grid; gap: 10px; padding: 14px 16px; border-radius: 14px; background: var(--field); }
+.seats { display: flex; flex-wrap: wrap; gap: 6px; }
+.seat-free { display: inline-flex; align-items: center; font-size: .8rem; color: var(--faint); padding: 3px 12px; border-radius: 999px; border: 1px dashed var(--line); }
+.solved { color: var(--accent); font-weight: 500; }
+.transport-me { display: grid; gap: 10px; padding-top: 6px; border-top: 1px solid var(--line-2); }
+.transport-me > .btn { justify-self: start; }
+.person-chip { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; padding: 2px 10px 2px 2px; border-radius: 999px; background: var(--surface); }
 .seg button:disabled { cursor: default; }
 .seg button:disabled:not(.on) { opacity: .45; }
 .seg button:disabled:hover { color: var(--muted); }
