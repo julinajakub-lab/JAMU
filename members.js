@@ -32,3 +32,7 @@ window.JAMU_GHOST = { name: 'Iva Černá', short: 'Iva' };
 // Who reigns when the database is brand new. Changed later by the crowning ceremony.
 window.JAMU_DEFAULT_COURT = { ruler: 'julia', heir: '' };
 // Autumn 2026: Júlia skipped Laďa's trip but took over the crown by letter. The gang agreed.
+
+// Everyone who has worn the crown before this website existed (since the first trip, Dyje on boats, 2020).
+// Each of them owes the archive the page of the trip(s) they organised. Júlia and Dalibor haven't reigned yet.
+window.JAMU_PAST_RULERS = ['jakub', 'adam', 'alzbeta', 'ladislav', 'michaela', 'nikol', 'sylvie', 'viktoria'];
