@@ -639,3 +639,12 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 .seg button:disabled:not(.on) { opacity: .45; }
 .seg button:disabled:hover { color: var(--muted); }
 .leader-note { margin: 4px 0 0; }
+
+/* ---------- Home: the letter stands alone; personal to-dos sit next to the next trip ---------- */
+.home-letter { margin: 0 auto; width: 100%; max-width: 720px; }
+.home-now { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.home-now.solo { grid-template-columns: 1fr; }
+.home-now > .panel, .home-now > .empty { height: 100%; }
+.home-todos .todo { flex-direction: column; align-items: flex-start; gap: 8px; }
+.home-todos .todo > span { flex: none; }
+@media (max-width: 820px) { .home-now { grid-template-columns: 1fr; } }

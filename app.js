@@ -406,10 +406,10 @@ function todoBlock() {
   } else if (!(m && PAST_RULERS.includes(m) && !chroniclesClosed()[m])) {
     add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
   }
-  add('Spotted a mistake, or have an idea for the site?', `<button class="btn sm" type="button" data-action="suggest">Suggest an edit</button>`);
+  if (!items.length) return '';
   return `
-    <section class="stack" style="gap:10px">
-      <div><p class="eyebrow">Start here</p><h2>What you can do right now</h2></div>
+    <section class="stack home-todos" style="gap:10px">
+      <div><p class="eyebrow">Just for you</p><h2>What you can do right now</h2></div>
       <ul class="todos">${items.join('')}</ul>
     </section>`;
 }
@@ -423,6 +423,7 @@ function viewHome() {
   const nikolCame = Math.max(1, done.filter(t => (t.attendees || []).includes('nikol')).length); // she came once, around 2021
   const quotes = allQuotes();
   const q = quotes.length ? quotes[Math.floor(Math.random() * quotes.length)] : { text: FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)] };
+  const todos = todoBlock();
   let nextBlock;
   if (plan) {
     const d = plan.start ? daysUntil(plan.start) : null;
@@ -456,8 +457,7 @@ function viewHome() {
       <p>Ten people who met studying theatre management at JAMU (plus one we adopted from JevTech). Twice a year we leave everyday life behind for a cottage in the woods, where we cook, walk and talk late into the night about our lives and the world.</p>
     </section>
 
-    <div class="home-intro">
-    <section class="letter">
+    <section class="letter home-letter">
       <p class="eyebrow">A letter to start with</p>
       <div class="letter-body">
         <p class="greeting">Hi, friends,</p>
@@ -475,9 +475,6 @@ function viewHome() {
       </div>
     </section>
 
-    ${todoBlock()}
-    </div>
-
     <section class="court" aria-label="The royal court">
       <div class="throne reign">
         ${avatar(c.ruler, 'lg')}
@@ -489,7 +486,10 @@ function viewHome() {
       </div>
     </section>
 
-    ${nextBlock}
+    <div class="home-now${todos ? '' : ' solo'}">
+      ${nextBlock}
+      ${todos}
+    </div>
 
     <section>
       <div class="section-head"><h2>By the numbers</h2></div>

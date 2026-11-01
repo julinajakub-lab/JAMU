@@ -100,6 +100,7 @@ const exact = {
   'It’s ours, so make it better. If something is missing or wrong, press “Suggest an edit” in the corner.': 'Je to naše, tak ať je to čím dál lepší. Když něco chybí nebo nesedí, klikni v rohu na „Navrhnout úpravu“.',
   'Built for us with': 'Pro nás, s láskou',
   'Start here': 'Začni tady',
+  'Just for you': 'Jen pro tebe',
   'What you can do right now': 'Co můžeš udělat {teraz|teď}',
   'First, tell the site who you are, so your votes and photos get your name.': 'Nejdřív řekni stránce, kdo jsi, ať jsou tvoje hlasy a fotky pod tvým jménem.',
   'Pick my name': 'Vybrat moje jméno',
