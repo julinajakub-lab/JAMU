@@ -11,8 +11,8 @@ window.JAMU_RELICS = [{
     organiser: 'jakub',
     place: 'Dyje, ze Znojma do Hevlína',
     start: '2020-07-21', end: '2020-07-25',
-    // Everyone who ticked 21.–25. 7. in the 2020 date poll. One of them dropped out before the trip.
-    attendees: ['adam', 'sylvie', 'alzbeta', 'julia', 'viktoria', 'ladislav', 'dalibor', 'jakub'],
+    // Everyone who ticked 21.–25. 7. in the 2020 date poll, minus Júlia, who couldn't make it in the end.
+    attendees: ['adam', 'sylvie', 'alzbeta', 'viktoria', 'ladislav', 'dalibor', 'jakub'],
     crowned: '',
     photos_url: 'https://drive.google.com/drive/folders/1fIETY0vPvvbzxZHQFEvcarPTfGyCE7vg',
     story: 'Jaro 2020, karanténa. Kuba nám místo zprávy do chatu, kde by to zapadlo, poslal dlouhý mail. Že život umí být těžký a krutý a zvládá se jen s blízkými lidmi, a že těmi lidmi jsme pro něj my. A protože slova občas nestačí, vezme nás na vodu. Tak vzniklo Společenstvo inscenace na vodě, a s ním i naše jméno a první z našich tradic.\n\nČtyři noci, tři etapy a skoro 40 kilometrů po Dyji: ze Znojma do Krhovic, přes přírodní rezervaci Meandry Dyje do Hrádku a dál až do Hevlína. Kolem renesančního mlýna se čtyřmi koly, s ochutnávkou vína ve sklepní uličce v Hrádku a s rumem přivázaným za lodí, ať není teplý.',
@@ -20,13 +20,21 @@ window.JAMU_RELICS = [{
     relics: 'dyje-2020'
   },
 
-  // The captain's picks from the "Dyje 2020" Drive folder (photos by Dalibor). Shown straight from Drive.
+  // The captain's picks from the "Dyje 2020" Drive folder (Dalibor's photos + the ones Jakub found in 2026). Shown straight from Drive.
   picks: [
+    { id: '1HJ7g-xpC9B8oyoVyhtkGe3KnUFqL_qYL', caption: 'Celá posádka' },
+    { id: '1VAlTyL2f4t24jXNBCsWr-YDW5qGk3HkB', caption: 'Vyplouváme' },
+    { id: '1ka9UPnVRIhPPhBmVgidZM2So_lX9Y0Z1', caption: 'Na vodě' },
+    { id: '1hSeEXzDc3rgJL8PviVPD_eItS-ilm4Th', caption: 'Flotila' },
+    { id: '1LJl6CU1Z7ci2wZ3mfHLmGMtZZQoTjIx7', caption: 'Znojmo, start' },
     { id: '1_PffvFKy7uvxzy6ZWAL2fBrgw-TdtAKE', caption: 'Ještě na suchu' },
     { id: '1LwAyg5aU3xvdHaSWV_U_yKU7Ffo5ANmX', caption: 'Sjednocený dech' },
-    { id: '1iur-OFMpg93N6hj3Cc0ObMLvIHdCAhV5', caption: 'Pauza u Dyje' },
-    { id: '1OhpPqer22lXcDmDCJwEwARwXqCmLG60S', caption: 'Barely, barely, barely' },
-    { id: '1qGCuUGs0q_hluwCmEwsjWohBMFpMKyiV', caption: 'Tábořiště' }
+    { id: '1zwHdLuXWCy3CVhR7PazlHrkcNKEDhYnT', caption: 'Brodění' },
+    { id: '1_C8iFC7261cAOidioug-pvpheiSD2AVS', caption: 'Siesta' },
+    { id: '1rujkPTZUSehGkMfSHk3Hmz79QFSljpsc', caption: 'Na nádraží' },
+    { id: '1Z9MkD1vuvcXxSubh2ZMpSmRDtH1e3Pb1', caption: 'Nad údolím' },
+    { id: '1r1geaQEhl1JlJ5UusPgGu3l_YB33EQrB', caption: 'Večer u kapličky' },
+    { id: '1v41zoiYtAr-sTf3PCbcwPQCz76DTgZKJ', caption: 'Výhled' }
   ],
 
   letter: {
