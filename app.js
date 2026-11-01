@@ -64,11 +64,19 @@ function memberChecks(name, checked = []) {
 }
 
 let toastTimer;
-function toast(msg) {
+// toast('Saved') or toast('Added', { label: 'Undo', run: async () => … })
+function toast(msg, action) {
   let t = $('.toast');
   if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
-  t.textContent = tr(msg); t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+  t.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 10"/></svg><span></span>`;
+  $('span', t).textContent = tr(msg);
+  if (action) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = tr(action.label);
+    b.addEventListener('click', async () => { t.hidden = true; try { await action.run(); } catch (e) { console.error(e); } });
+    t.appendChild(b);
+  }
+  t.hidden = false; t.classList.remove('in'); void t.offsetWidth; t.classList.add('in');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, action ? 6000 : 3600);
 }
 
 /* ---------------- languages ---------------- */
@@ -326,8 +334,8 @@ function openModal(html, onSubmit, setup) {
   if (setup) setup(modal);
   const first = $('input, select, textarea, button', modal); if (first) first.focus();
 }
-function closeModal() { $$('.modal-bg').forEach(m => m.remove()); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && me()) closeModal(); });
+function closeModal() { $$('.modal-bg').forEach(m => m.remove()); sheetCtx = null; document.body.classList.remove('has-sheet'); }
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (sheetCtx) closeSheet(); else if (me()) closeModal(); });
 
 /* ---------------- layout ---------------- */
 const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['timeline', 'Timeline'], ['next', 'Next Trip'], ['archive', 'Archive'], ['after', 'After the Trip']];
@@ -397,7 +405,7 @@ function todoBlock() {
   }
   if (last) {
     add(`Do you have nice photos from <b>${esc(last.title)}</b>? Share them with everyone.`, `<button class="btn primary sm" type="button" data-action="share-photos" data-trip="${last.id}">Share photos</button>`);
-    add(`Did you pay for something on <b>${esc(last.title)}</b>? Add it and the page works out who owes whom.`, `<a class="btn sm" href="#trip-${esc(last.id)}">Add an expense</a>`);
+    add(`Did you pay for something on <b>${esc(last.title)}</b>? Add it and the page works out who owes whom.`, `<button class="btn sm" type="button" data-action="add-exp" data-trip="${esc(last.id)}">Add an expense</button>`);
   } else if (!(m && PAST_RULERS.includes(m) && !chroniclesClosed()[m])) {
     add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
   }
@@ -727,13 +735,7 @@ function photosSection(t, albumUrl) {
         <img data-photo="${esc(p.path)}" alt="" loading="lazy">
         ${p.by ? `<span class="ph-by">${esc(nameOf(p.by))}</span>` : ''}
       </button>`).join('')}</div>` : ''}
-    <details class="album-link">
-      <summary class="small muted">${albumUrl ? 'Change the shared album link' : 'Have a Google Photos / Drive album with everything? Link it too'}</summary>
-      <form id="photo-form" class="row" data-trip="${t.id}" style="margin-top:10px">
-        <input type="url" name="url" id="photo-url" placeholder="https://photos.app.goo.gl/…" value="${esc(albumUrl)}" required style="flex:1 1 240px">
-        <button class="btn" type="submit">Save link</button>
-      </form>
-    </details>
+    <div class="row album-row">${albumUrl ? `<span class="muted small">Shared album linked.</span>` : `<span class="muted small">Have a Google Drive or Photos album with everything?</span>`}<button class="btn sm" type="button" data-action="album-link" data-trip="${t.id}">${albumUrl ? 'Change album link' : 'Link the album'}</button></div>
   </section>`;
 }
 
@@ -926,43 +928,15 @@ function viewTimeline() {
     <ol class="timeline">${rows}</ol>
   </div>`;
 }
-function milestoneForm(m) {
-  return `
-  <div class="spread"><h2>${m ? 'Edit milestone' : 'Add a milestone'}</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
-  <form>
-    <label>What happened<input name="title" id="m-title" required value="${esc(m?.title)}" placeholder="Míša’s baby is born"></label>
-    <div class="grid2">
-      <label>Date<input type="date" name="date" id="m-date" required value="${esc(m?.date)}"></label>
-      <label>Type<select name="kind" id="m-kind">${Object.entries(KINDS).map(([k, [l, i]]) => `<option value="${k}" ${m?.kind === k ? 'selected' : ''}>${i} ${l}</option>`).join('')}</select></label>
-    </div>
-    <label>Special label (optional)<input name="label" id="m-label" value="${esc(m?.label)}" placeholder="First baby of the gang"></label>
-    <div class="stack" style="gap:6px"><span class="small muted" style="font-weight:500">Who is it about</span>${memberChecks('who', m?.who || [])}</div>
-    <label>Links found online (optional, one per line: <span class="mono">Title | https://…</span>)<textarea name="links" id="m-links" style="min-height:64px" placeholder="Article about us | https://…">${esc((m?.links || []).map(l => (l.title ? l.title + ' | ' : '') + l.url).join('\n'))}</textarea></label>
-    <label>A few words (optional)<textarea name="note" id="m-note" placeholder="Name, weight, who cried first…">${esc(m?.note)}</textarea></label>
-    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
-  </form>`;
-}
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
 const parseLinks = txt => String(txt || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
   const i = l.lastIndexOf('|');
   const url = (i >= 0 ? l.slice(i + 1) : l).trim(), title = i >= 0 ? l.slice(0, i).trim() : '';
   return { title, url };
 }).filter(l => safeUrl(l.url));
-const readMilestone = fd => ({ title: String(fd.get('title')).trim(), date: String(fd.get('date')), kind: String(fd.get('kind')), label: String(fd.get('label') || '').trim(), note: String(fd.get('note') || '').trim(), who: fd.getAll('who'), links: parseLinks(fd.get('links')) });
 
 /* ---------------- suggestions ---------------- */
 const openIdeas = () => S.suggestions.filter(s => !s.done).length;
-function suggestForm() {
-  const here = route().startsWith('trip-') ? 'Archive' : (PAGE_NAMES[route()] || 'Home');
-  return `
-  <div class="spread"><h2>Suggest an edit</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
-  <form>
-    <p class="muted small">Spotted a typo, a wrong date, a missing joke, or have an idea for a new feature? Write it here. Jakub sees every suggestion.</p>
-    <label>Which page<select name="page" id="s-page">${Object.values(PAGE_NAMES).concat('Whole site / new idea').map(p => `<option ${p === here ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></label>
-    <label>Your suggestion<textarea name="text" id="s-text" required placeholder="e.g. My nickname is spelled wrong. It should be…"></textarea></label>
-    <div class="row"><button class="btn primary" type="submit">Send suggestion</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
-  </form>`;
-}
 function viewIdeas() {
   const list = [...S.suggestions].sort((a, b) => (a.done === b.done ? (b.created_at || '').localeCompare(a.created_at || '') : a.done ? 1 : -1));
   return `
@@ -994,6 +968,8 @@ function viewTrip(t, { after = false } = {}) {
   const att = t.attendees && t.attendees.length ? t.attendees : MEMBERS.map(m => m.id);
   const total = ex.reduce((s, e) => s + Number(e.amount || 0), 0);
   const transfers = settle(ex);
+  // Trips added to the archive by hand have no settling up; only wrapped-up trips (or ones with expenses) do.
+  const showMoney = after || !!t.done_at || ex.length > 0;
   const photos = safeUrl(t.photos_url);
   const quotes = (t.quotes || '').split('\n').map(s => s.trim()).filter(Boolean);
   return `
@@ -1005,7 +981,7 @@ function viewTrip(t, { after = false } = {}) {
       <p class="small"><span class="crown">♛</span> Organised by <b>${esc(member(t.organiser)?.name || '—')}</b>${t.crowned ? ` · crowned at the end: <b>${esc(member(t.crowned)?.name)}</b>` : ''}</p>
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${t.id}">Edit</button>${after ? `<a class="btn sm ghost" href="#trip-${esc(t.id)}">Permalink</a>` : ''}</div>
       ${chronicleGaps(t).length ? `<p class="hint">${esc(nameOf(t.organiser))} organised this one, so the page is theirs to finish. Still missing: ${gapChips(t)}</p>` : ''}
-      ${after ? `<p class="hint">Just got back? Two things to do: <button class="linkish" type="button" data-action="share-photos" data-trip="${t.id}">share your photos</button> and <button class="linkish" type="button" data-action="scroll" data-to="exp-form">add what you paid for</button>. The page works out who owes whom.</p>` : ''}
+      ${after ? `<p class="hint">Just got back? Two things to do: <button class="linkish" type="button" data-action="share-photos" data-trip="${t.id}">share your photos</button> and <button class="linkish" type="button" data-action="add-exp" data-trip="${t.id}">add what you paid for</button>. The page works out who owes whom.</p>` : ''}
     </section>
 
     ${photosSection(t, photos)}
@@ -1015,6 +991,7 @@ function viewTrip(t, { after = false } = {}) {
       <div class="row">${(t.attendees || []).map(id => `<span class="row" style="gap:6px">${avatar(id, 'xs')}<span class="small">${esc(nameOf(id))}</span></span>`).join('') || '<span class="muted small">Not filled in. Use Edit to add who came.</span>'}</div>
     </section>
 
+    ${showMoney ? `
     <div class="two-col">
       <section class="panel stack">
         <div class="spread"><div><p class="eyebrow">Who paid for what</p><h2 class="num">${kc(total)}</h2></div>${att.length ? `<span class="muted small num">≈ ${kc(total / att.length)} per person</span>` : ''}</div>
@@ -1024,15 +1001,7 @@ function viewTrip(t, { after = false } = {}) {
             <span class="amount">${kc(e.amount)}</span>
             <button class="btn sm ghost danger" type="button" data-action="del-exp" data-exp="${e.id}" aria-label="Delete expense">✕</button>
           </div>`).join('') || '<p class="muted small">No expenses yet. Who bought the beer? (This budget, unlike the festival one, will actually balance.)</p>'}</div>
-        <form id="exp-form" class="stack" data-trip="${t.id}" style="gap:10px;border-top:1px solid var(--line);padding-top:14px">
-          <div class="grid2">
-            <label>What<input name="what" id="exp-what" placeholder="Groceries, cottage, petrol…" required></label>
-            <label>Amount (Kč)<input name="amount" id="exp-amount" type="number" min="1" step="1" inputmode="numeric" required></label>
-            <label>Paid by<select name="payer" id="exp-payer">${memberOptions(me() || att[0])}</select></label>
-          </div>
-          <div class="stack" style="gap:6px"><span class="small muted" style="font-weight:600">Split between</span>${memberChecks('split', att)}</div>
-          <div><button class="btn primary" type="submit">Add expense</button></div>
-        </form>
+        <div><button class="btn primary sm" type="button" data-action="add-exp" data-trip="${t.id}">+ Add expense</button></div>
       </section>
 
       <section class="panel stack">
@@ -1043,6 +1012,7 @@ function viewTrip(t, { after = false } = {}) {
           : `<p class="muted">${ex.length ? 'Everyone is square. Cleaner than any festival budget we ever handed in.' : 'Add expenses and the fewest possible payments will appear here.'}</p>`}
       </section>
     </div>
+    ` : ''}
 
     <section class="panel stack">
       <p class="eyebrow">Stories &amp; quotes</p>
@@ -1093,60 +1063,444 @@ function settle(expenses) {
   return out;
 }
 
-/* ---------------- forms ---------------- */
-function tripForm(t, mode, preset = {}) {
-  // mode: 'plan' (upcoming) or 'past'
-  const past = mode === 'past';
+/* ---------------- the add & edit window ----------------
+   One window for everything people add or change: trips, past trips, the crowning, milestones,
+   expenses, photo albums and suggestions. Only the title is required. Every change saves a draft
+   in this browser, so closing never loses work. Esc closes, Ctrl/⌘+Enter saves. */
+const ICONS = {
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  person: '<circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  cal: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  route: '<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/>',
+  people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.6 3.6-5.5 6.5-5.5s5.5 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.8.7 3 2.4 3.5 5.2"/>',
+  text: '<path d="M4 6h16M4 11h16M4 16h10"/>',
+  quote: '<path d="M7 7h4v4c0 3-1.5 5-4 6M14 7h4v4c0 3-1.5 5-4 6"/>',
+  image: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m20.5 16-5-5-8 8"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  money: '<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.5"/>',
+  crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/>',
+  tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
+  page: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
+  check: '<path d="m5 12 5 5 9-10"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>',
+  done: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 10"/>'
+};
+const ic = (k, s = 16, w = 1.7) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+const SAVE_KEY = IS_MAC ? '⌘↵' : 'Ctrl ↵';
+const NEXT_KEY = IS_MAC ? '⇧⌘↵' : 'Ctrl ⇧ ↵';
+const LINK_RX = /^https?:\/\/\S+\.\S+/i;
+const nights = n => `${n} ${n === 1 ? 'night' : 'nights'}`;
+const people = (o = {}) => MEMBERS.map(m => ({ v: m.id, l: m.short })).filter(x => !o.except || x.v !== o.except);
+const personOptions = ({ blank } = {}) => (blank ? [{ v: '', l: blank }] : []).concat(people());
+
+// The Trip Terms & Conditions. Jakub's legal department; add new paragraphs at the end.
+const TERMS = [
+  'Whoever writes “sure, I’m coming” is coming. Exceptions require a general assembly. Nikol holds a permanent exception.',
+  'Photos are shared with “Anyone with the link”. Ignorance of sharing settings is no excuse.',
+  'The crown may also be accepted by letter (precedent: Júlia, autumn 2026).',
+  'Receipts go in within 7 days. After that, you paid for it yourself and were happy to.',
+  'What happens at the cottage stays at the cottage, except for the photos, see § 2.',
+  'Whoever survived JAMU together will survive a weekend in the woods too. No appeal is possible.'
+];
+const termsHtml = () => `
+  <div class="sh-terms">By creating a trip you accept the <button type="button" class="linkish" data-sh="terms" aria-expanded="false">Trip Terms &amp; Conditions</button>.
+    <div class="terms-doc" hidden>
+      <h3>Trip Terms &amp; Conditions of the Společenstvo Inscenace</h3>
+      <p class="sub">Drafted by Jakub Julina, legal department. Nobody has read them. Binding all the same.</p>
+      <ol>${TERMS.map((t, i) => `<li><b>§ ${i + 1}</b><span>${esc(t)}</span></li>`).join('')}</ol>
+      <p class="sign">Brno, 1 November 2026 · J. J., legal dept.</p>
+    </div>
+  </div>`;
+
+function fieldHtml(f) {
+  const id = 'sh-' + f.key;
+  const ph = f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : '';
+  let ctl = '';
+  if (f.type === 'select') {
+    ctl = `<select class="in" id="${id}" data-k="${f.key}">${f.options.map(o => `<option value="${esc(o.v)}" ${String(o.v) === String(f.value ?? '') ? 'selected' : ''}>${esc(o.l)}</option>`).join('')}</select>`;
+  } else if (f.type === 'area') {
+    ctl = `<textarea class="in" id="${id}" data-k="${f.key}" rows="${f.rows || 3}"${ph}>${esc(f.value)}</textarea>`;
+  } else if (f.type === 'date') {
+    ctl = `<input class="in in-date" type="date" id="${id}" data-k="${f.key}" value="${esc(f.value)}">`;
+  } else if (f.type === 'money') {
+    ctl = `<div class="affix"><input class="in" id="${id}" data-k="${f.key}" inputmode="decimal" autocomplete="off" value="${esc(f.value)}" placeholder="0"><span>Kč</span></div>`;
+  } else if (f.type === 'dates') {
+    const v = f.value || {};
+    ctl = `<div class="dates" ${v.vote ? 'hidden' : ''}>
+        <input class="in" type="date" id="${id}" data-k="${f.key}" data-part="start" value="${esc(v.start)}" aria-label="From">
+        <span class="dash" aria-hidden="true">–</span>
+        <input class="in" type="date" data-k="${f.key}" data-part="end" value="${esc(v.end)}" aria-label="To">
+      </div>
+      ${f.vote ? `<p class="vote-note" ${v.vote ? '' : 'hidden'}>A date poll opens on the trip page. Everyone votes, you pick the winner.</p>
+      <button type="button" class="switch-row" role="switch" aria-checked="${v.vote ? 'true' : 'false'}" data-k="${f.key}" data-part="vote"><span class="switch"><span class="knob"></span></span>Let the gang vote on the date</button>` : ''}`;
+  } else if (f.type === 'people') {
+    const sel = f.value || [];
+    ctl = `<div class="pchips" role="group" aria-label="${esc(f.label)}" id="${id}" data-k="${f.key}">${MEMBERS.map(m => `
+        <button type="button" class="pchip" data-id="${m.id}" aria-pressed="${sel.includes(m.id)}">${avatar(m.id, 'xs')}<span>${esc(m.short)}</span></button>`).join('')}</div>
+      <div class="pchips-meta"><span class="num" data-count></span><button type="button" class="linkish" data-sh="all" data-k="${f.key}"></button></div>`;
+  } else {
+    const url = f.type === 'link';
+    ctl = `<input class="in" id="${id}" data-k="${f.key}" type="${url ? 'url' : 'text'}" ${url ? 'inputmode="url"' : ''} autocomplete="off" value="${esc(f.value)}"${ph}>`;
+  }
   return `
-  <div class="spread"><h2>${t ? 'Edit trip' : past ? 'Add a past trip' : 'Plan the next trip'}</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
-  <form>
-    <label>Name of the trip<input name="title" id="f-title" required value="${esc(t?.title)}" placeholder="${past ? 'e.g. The one where the stove exploded' : 'e.g. Spring weekend at the cottage'}"></label>
-    <div class="grid2">
-      <label>Place<input name="place" id="f-place" value="${esc(t?.place)}" placeholder="Chata u Lesa"></label>
-      <label>Organiser<select name="organiser" id="f-org">${memberOptions(t?.organiser || preset.organiser || court().ruler)}</select></label>
-    </div>
-    <label>Address (for navigation)<input name="address" id="f-address" value="${esc(t?.address)}" placeholder="Street, number, town"></label>
-    <div class="grid2">
-      <label>From${!past && !t ? ' (optional, you can vote instead)' : ''}<input type="date" name="start" id="f-start" value="${esc(t?.start)}" ${past ? 'required' : ''}></label>
-      <label>To<input type="date" name="end" id="f-end" value="${esc(t?.end)}"></label>
-    </div>
-    ${past ? `
-      <label>Crowned at the end (next organiser)<select name="crowned" id="f-crowned">${memberOptions(t?.crowned, { blank: true })}</select></label>
-      <div class="stack" style="gap:6px"><span class="small muted" style="font-weight:600">Who came</span>${memberChecks('attendees', t?.attendees || [])}</div>
-      <label>Photo album link<input type="url" name="photos_url" id="f-photos" value="${esc(t?.photos_url)}" placeholder="https://drive.google.com/…"></label>
-      <label>The story<textarea name="story" id="f-story" placeholder="What happened?">${esc(t?.story)}</textarea></label>
-      <label>Quotes (one per line)<textarea name="quotes" id="f-quotes" placeholder="&quot;Has anyone seen Nikol?&quot; – everyone, every trip">${esc(t?.quotes)}</textarea></label>
-    ` : `
-      <label>Good to know (what to bring, keys, check-in…)<textarea name="notes" id="f-notes">${esc(t?.notes)}</textarea></label>
-    `}
-    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
-  </form>`;
-}
-function readTripForm(fd, past) {
-  const d = {};
-  ['title', 'place', 'organiser', 'address', 'start', 'end', 'notes', 'photos_url', 'story', 'quotes', 'crowned'].forEach(k => { if (fd.has(k)) d[k] = String(fd.get(k)).trim(); });
-  if (past) d.attendees = fd.getAll('attendees');
-  if (d.start && (!d.end || d.end < d.start)) d.end = d.start;
-  return d;
+    <div class="prop" data-field="${f.key}">
+      <label class="p-label" for="${id}">${ic(f.icon || 'text')}<span>${esc(f.label)}</span></label>
+      <div class="p-val">${ctl}<p class="msg" data-msg="${f.key}" hidden></p></div>
+    </div>`;
 }
 
-function wrapUpForm(t) {
+let sheetCtx = null;
+function openSheet(cfg) {
+  closeModal();
+  const key = cfg.draft ? 'jamu-draft:' + cfg.draft : null;
+  let draft = null;
+  if (key && !cfg.fresh) { try { draft = JSON.parse(ls.get(key) || 'null'); } catch { draft = null; } }
+  const fields = cfg.fields.map(f => ({ ...f, value: draft && f.key in draft ? draft[f.key] : f.value }));
+  const titleVal = draft && 'title' in draft ? draft.title : (cfg.title || '');
+
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg sheet-bg';
+  bg.innerHTML = `
+  <div class="sheet-win" role="dialog" aria-modal="true" aria-labelledby="sh-title" tabindex="-1">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sh-head">
+      <span class="sh-kind"><span class="sh-kind-ic">${ic(cfg.kindIcon || 'plus', 12, 2.4)}</span><span>${esc(cfg.eyebrow)}</span></span>
+      <span class="sh-status" aria-live="polite"><span class="dot"></span><span data-status></span></span>
+      <button type="button" class="icon-btn" data-sh="close" aria-label="Close">${ic('x', 16, 2)}</button>
+    </div>
+    <form class="sh-form" novalidate>
+      <div class="sh-title">
+        ${cfg.heading
+          ? `<h2 id="sh-title" class="t-static">${esc(cfg.heading)}</h2>`
+          : `<input id="sh-title" class="t-in" data-k="title" autocomplete="off" value="${esc(titleVal)}" placeholder="${esc(cfg.titlePh)}" aria-label="${esc(cfg.titlePh)}">`}
+        <p class="msg" data-msg="title" hidden></p>
+        ${cfg.lead ? `<p class="sh-lead">${esc(cfg.lead)}</p>` : ''}
+        <div class="orn" aria-hidden="true"><span></span><i></i><span></span></div>
+      </div>
+      ${cfg.flash ? `<p class="sh-flash">${ic('check', 14, 2.2)}<span>${esc(cfg.flash)}</span></p>` : ''}
+      <div class="sh-body">${fields.map(fieldHtml).join('')}${cfg.terms ? termsHtml() : ''}</div>
+      <div class="sh-foot">
+        <div class="keys"><span><kbd>Esc</kbd> close</span></div>
+        <div class="fix" hidden></div>
+        <button type="button" class="btn ghost" data-sh="close">Cancel</button>
+        ${cfg.next ? `<button type="button" class="btn" data-sh="next" title="${NEXT_KEY}">${esc(cfg.next)}</button>` : ''}
+        <button type="submit" class="btn primary${cfg.gold ? ' gold' : ''}">${esc(cfg.primary)}<kbd>${SAVE_KEY}</kbd></button>
+      </div>
+    </form>
+  </div>`;
+  document.body.appendChild(bg);
+  document.body.classList.add('has-sheet');
+  const sheet = $('.sheet-win', bg), form = $('form', bg);
+  const ctx = sheetCtx = { cfg, key, fields, bg, sheet, form, timer: null, busy: false };
+  const fieldEl = k => $(`[data-field="${k}"]`, form);
+
+  const read = () => {
+    const v = {};
+    if (!cfg.heading) v.title = $('#sh-title', form).value.trim();
+    for (const f of fields) {
+      const el = fieldEl(f.key);
+      if (f.type === 'people') v[f.key] = $$('.pchip[aria-pressed="true"]', el).map(b => b.dataset.id);
+      else if (f.type === 'dates') {
+        const vote = $('[data-part="vote"]', el)?.getAttribute('aria-checked') === 'true';
+        v[f.key] = { start: vote ? '' : $('[data-part="start"]', el).value, end: vote ? '' : $('[data-part="end"]', el).value, vote };
+      } else v[f.key] = $('[data-k]', el).value.trim();
+    }
+    return v;
+  };
+  ctx.read = read;
+  const initial = JSON.stringify((() => { const v = read(); return v; })());
+  ctx.dirty = () => JSON.stringify(read()) !== initial || !!draft;
+
+  const setStatus = (s) => {
+    const map = { new: ['Not saved yet', ''], saving: ['Saving draft…', 'saving'], saved: ['Draft saved', 'saved'], restored: ['Draft restored', 'saved'], sending: ['Saving…', 'saving'] };
+    const [t, cls] = map[s] || map.new;
+    $('[data-status]', bg).textContent = tr(t);
+    $('.sh-status .dot', bg).className = 'dot ' + cls;
+  };
+  setStatus(draft ? 'restored' : 'new');
+
+  const setMsg = (k, kind, text) => {
+    const p = $(`[data-msg="${k}"]`, form); if (!p) return;
+    const wrap = k === 'title' ? $('.sh-title', form) : fieldEl(k);
+    wrap.classList.toggle('has-err', kind === 'err');
+    if (!text) { p.hidden = true; p.innerHTML = ''; return; }
+    p.hidden = false; p.className = 'msg' + (kind === 'err' ? ' err' : kind === 'ok' ? ' ok' : '');
+    p.innerHTML = (kind === 'err' ? ic('alert', 14, 2) : kind === 'ok' ? ic('check', 14, 2.2) : '') + `<span>${esc(tr(text))}</span>`;
+  };
+  const errors = {};
+  const check = (f, v) => (f.check ? f.check(v[f.key], v) : '') || '';
+  const refresh = (k) => {
+    const v = read();
+    for (const f of fields) {
+      if (k && f.key !== k && !(f.watch || []).includes(k)) continue;
+      const el = fieldEl(f.key);
+      if (f.type === 'people') {
+        const n = v[f.key].length;
+        $('[data-count]', el).textContent = tr(`${n} of ${MEMBERS.length}`);
+        $('[data-sh="all"]', el).textContent = tr(n === MEMBERS.length ? 'Clear' : 'Select everyone');
+      }
+      if (f.type === 'dates') {
+        const vote = v[f.key].vote;
+        $('.dates', el).hidden = vote;
+        const note = $('.vote-note', el); if (note) note.hidden = !vote;
+      }
+      if (errors[f.key]) { setMsg(f.key, 'err', errors[f.key]); continue; }
+      const live = f.live ? f.live(v[f.key], v) : null;
+      if (live && live.ok) setMsg(f.key, 'ok', live.ok);
+      else setMsg(f.key, '', (live && live.hint) || f.hint || '');
+    }
+    const n = Object.keys(errors).length;
+    const fix = $('.fix', form); fix.hidden = !n; $('.keys', form).hidden = !!n;
+    fix.textContent = tr(n === 1 ? '1 thing to fix' : `${n} things to fix`);
+  };
+  refresh();
+
+  const touch = (k) => {
+    if (k && errors[k]) { delete errors[k]; }
+    refresh(k);
+    if (!key) return;
+    setStatus('saving');
+    clearTimeout(ctx.timer);
+    ctx.timer = setTimeout(() => { ls.set(key, JSON.stringify(read())); setStatus('saved'); }, 600);
+  };
+  const validate = (k) => {
+    const v = read();
+    for (const f of fields) {
+      if (k && f.key !== k) continue;
+      const e = check(f, v); if (e) errors[f.key] = e; else delete errors[f.key];
+    }
+    refresh(k);
+  };
+
+  form.addEventListener('input', e => { const k = e.target.closest('[data-field]')?.dataset.field || (e.target.id === 'sh-title' ? 'title' : null); if (k === 'title') setMsg('title', '', ''); touch(k); });
+  form.addEventListener('change', e => { const k = e.target.closest('[data-field]')?.dataset.field; if (k) touch(k); });
+  form.addEventListener('focusout', e => {
+    const k = e.target.closest('[data-field]')?.dataset.field; if (!k) return;
+    const f = fields.find(x => x.key === k);
+    if (f && f.type !== 'people' && e.target.matches('input')) {
+      const v = read(); const val = v[k];
+      const empty = f.type === 'dates' ? !(val.start || val.end) : !val;
+      if (!empty) validate(k);
+    }
+  });
+  bg.addEventListener('click', e => {
+    if (e.target === bg) return closeSheet();
+    const chip = e.target.closest('.pchip');
+    if (chip) { chip.setAttribute('aria-pressed', chip.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); return touch(chip.closest('[data-field]').dataset.field); }
+    const b = e.target.closest('[data-sh], [data-part="vote"]'); if (!b) return;
+    if (b.dataset.part === 'vote') { b.setAttribute('aria-checked', b.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); return touch(b.dataset.k); }
+    const a = b.dataset.sh;
+    if (a === 'close') return closeSheet();
+    if (a === 'next') return submitSheet(true);
+    if (a === 'all') {
+      const el = fieldEl(b.dataset.k); const chips = $$('.pchip', el);
+      const all = chips.every(c => c.getAttribute('aria-pressed') === 'true');
+      chips.forEach(c => c.setAttribute('aria-pressed', all ? 'false' : 'true'));
+      return touch(b.dataset.k);
+    }
+    if (a === 'terms') {
+      const doc = $('.terms-doc', form); doc.hidden = !doc.hidden; b.setAttribute('aria-expanded', String(!doc.hidden));
+      if (!doc.hidden) doc.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
+  bg.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); return closeSheet(); }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); return submitSheet(!!(e.shiftKey && cfg.next)); }
+  });
+  form.addEventListener('submit', e => { e.preventDefault(); submitSheet(false); });
+
+  ctx.submit = async (next) => {
+    if (ctx.busy) return;
+    const v = read();
+    for (const k of Object.keys(errors)) delete errors[k];
+    if (!cfg.heading && cfg.titleRequired !== false && !v.title) { setMsg('title', 'err', cfg.titleErr || 'Give it a name first.'); errors.title = 1; }
+    else setMsg('title', '', '');
+    for (const f of fields) { const er = check(f, v); if (er) errors[f.key] = er; }
+    refresh();
+    if (Object.keys(errors).length) {
+      const first = errors.title ? $('#sh-title', form) : $('[data-field].has-err input, [data-field].has-err select, [data-field].has-err textarea, [data-field].has-err button', form);
+      first?.focus();
+      return;
+    }
+    ctx.busy = true; setStatus('sending');
+    $$('.sh-foot .btn', form).forEach(b => { b.disabled = true; });
+    try {
+      clearTimeout(ctx.timer);
+      await cfg.onSave(v, { next });
+      if (key) ls.del(key);
+      if (next) {
+        const keep = {}; (cfg.keepOnNext || []).forEach(k => { keep[k] = v[k]; });
+        openSheet({ ...cfg, fresh: true, title: '', fields: cfg.fields.map(f => (f.key in keep ? { ...f, value: keep[f.key] } : f)), flash: 'Added. Next one?' });
+        $('#sh-title')?.focus();
+        return;
+      }
+      removeSheet();
+    } catch (err) {
+      console.error(err);
+      toast('That didn’t save: ' + (err.message || 'unknown error') + '. Try again?');
+      ctx.busy = false; setStatus(key ? 'saved' : 'new');
+      $$('.sh-foot .btn', form).forEach(b => { b.disabled = false; });
+    }
+  };
+
+  translateDOM(bg);
+  const focusEl = cfg.heading ? $('input, select, textarea', form) : $('#sh-title', form);
+  (focusEl || sheet).focus({ preventScroll: true });
+  if (focusEl && focusEl.setSelectionRange && focusEl.value) { const n = focusEl.value.length; try { focusEl.setSelectionRange(n, n); } catch { /* date inputs */ } }
+}
+function submitSheet(next) { if (sheetCtx) sheetCtx.submit(next); }
+function removeSheet() {
+  if (!sheetCtx) return;
+  clearTimeout(sheetCtx.timer);
+  sheetCtx.bg.remove(); sheetCtx = null;
+  document.body.classList.remove('has-sheet');
+}
+function closeSheet() {
+  const ctx = sheetCtx; if (!ctx) return;
+  const dirty = ctx.key && ctx.dirty();
+  if (ctx.key) { if (dirty) ls.set(ctx.key, JSON.stringify(ctx.read())); else ls.del(ctx.key); }
+  removeSheet();
+  if (dirty) toast('Draft kept. Carry on from the same button any time.');
+}
+
+/* ---- field checks shared by several windows ---- */
+const chk = {
+  dates: (required) => (v) => {
+    if (v.vote) return '';
+    if (required && !v.start) return 'Pick at least the first day.';
+    if (v.start && v.end && v.end < v.start) return 'The trip ends before it starts. So far only Nikol has managed that.';
+    return '';
+  },
+  link: (required) => (v) => (!v ? (required ? 'Paste the link first.' : '') : LINK_RX.test(v) ? '' : 'That doesn’t look like a link yet. It should start with https://'),
+  money: (v) => (!v ? 'How much was it?' : /^\d+([.,]\d{1,2})?$/.test(v.replace(/\s/g, '')) && parseFloat(v.replace(/\s/g, '').replace(',', '.')) > 0 ? '' : 'Just the number, e.g. 1250.'),
+  someone: (v) => (v && v.length ? '' : 'Pick at least one person.'),
+  required: (msg) => (v) => (v ? '' : msg)
+};
+const live = {
+  dates: (v) => {
+    if (v.vote || !v.start || !v.end || v.end < v.start) return null;
+    const n = Math.round((parseDate(v.end) - parseDate(v.start)) / 864e5);
+    return { hint: `${fmtRange(v.start, v.end)} · ${tr(nights(n))}` };
+  },
+  link: (v) => (!v || !LINK_RX.test(v) ? null
+    : /drive\.google\./i.test(v) ? { ok: 'Google Drive folder. One click and everyone sees the photos.' }
+    : /photos\.(app\.goo\.gl|google\.)/i.test(v) ? { ok: 'Google Photos album. One click and everyone sees the photos.' }
+    : { ok: 'Link looks good.' }),
+  coming: (v) => (!v.length ? { hint: 'A trip with nobody on it. Bold.' } : v.includes('nikol') ? { hint: 'Nikol came? Then this also belongs on the timeline as a milestone.' } : null)
+};
+const SHARE_HINT = 'I’m sure I don’t have to tell you, but… is the folder shared with “Anyone with the link”? 😉';
+
+/* ---- the windows ---- */
+function tripSheet(t, mode, preset = {}) {
+  const past = mode === 'past';
+  const fields = [
+    { key: 'organiser', type: 'select', icon: 'person', label: 'Organiser', options: personOptions(), value: t?.organiser || preset.organiser || court().ruler, hint: !t && !past ? 'Defaults to whoever wears the crown.' : '' },
+    { key: 'when', type: 'dates', icon: 'cal', label: 'When', vote: !past && !t, value: { start: t?.start || '', end: t?.end || '', vote: !past && !t }, check: chk.dates(past), live: live.dates },
+    { key: 'place', type: 'text', icon: 'pin', label: 'Where', value: t?.place || '', placeholder: 'Name of the cottage' }
+  ];
+  if (!past) fields.push(
+    { key: 'address', type: 'text', icon: 'route', label: 'Address', value: t?.address || '', placeholder: 'Street, number, town', hint: 'We add the car route and a Maps link for you.' },
+    { key: 'notes', type: 'area', icon: 'text', label: 'Good to know', value: t?.notes || '', placeholder: 'What to bring, who drives, keys, check-in…' });
+  else fields.push(
+    { key: 'crowned', type: 'select', icon: 'crown', label: 'Crowned at the end', options: personOptions({ blank: 'Not decided' }), value: t?.crowned || '' },
+    { key: 'attendees', type: 'people', icon: 'people', label: 'Who came', value: t?.attendees || MEMBERS.map(m => m.id), live: live.coming },
+    { key: 'photos_url', type: 'link', icon: 'image', label: 'Photos', value: t?.photos_url || '', placeholder: 'Paste a Google Drive or Google Photos link', hint: SHARE_HINT, check: chk.link(false), live: live.link },
+    { key: 'story', type: 'area', icon: 'text', label: 'The story', value: t?.story || '', placeholder: 'A few sentences. What will we still laugh about in ten years?' },
+    { key: 'quotes', type: 'area', icon: 'quote', label: 'Quotes', rows: 2, value: t?.quotes || '', placeholder: 'One per line. “Has anyone seen Nikol?”' });
+  return {
+    eyebrow: t ? 'Edit trip' : past ? 'Past trip for the archive' : 'New trip file',
+    kindIcon: t ? 'text' : 'plus',
+    titlePh: past ? 'Which trip was it?' : 'Name the trip', title: t?.title || '',
+    primary: t ? 'Save changes' : past ? 'Add to archive' : 'Create trip file',
+    terms: !t && !past,
+    draft: t ? 'trip-' + t.id : past ? 'past-trip' : 'new-trip',
+    fields,
+    toTrip: v => {
+      const d = { title: v.title, organiser: v.organiser, place: v.place, start: v.when.start, end: v.when.end || v.when.start };
+      if (!d.start) d.end = '';
+      if (past) Object.assign(d, { crowned: v.crowned, attendees: v.attendees, photos_url: v.photos_url, story: v.story, quotes: v.quotes });
+      else Object.assign(d, { address: v.address, notes: v.notes });
+      return d;
+    }
+  };
+}
+
+function wrapSheet(t) {
   const c = court();
   const coming = Object.entries(t.rsvp || {}).filter(([, v]) => v === 'yes').map(([k]) => k);
-  return `
-  <div class="spread"><h2>The crowning ceremony ♛</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
-  <form>
-    <p class="muted">This moves “${esc(t.title)}” to the archive and hands over the crown. Photos and expenses come next.</p>
-    <div class="grid2">
-      <label>Trip started<input type="date" name="start" id="w-start" value="${esc(t.start)}" required></label>
-      <label>Trip ended<input type="date" name="end" id="w-end" value="${esc(t.end)}"></label>
-    </div>
-    <div class="stack" style="gap:6px"><span class="small muted" style="font-weight:600">Who actually came</span>${memberChecks('attendees', coming)}</div>
-    <label>Crown the new monarch (plans the next trip)<select name="crowned" id="w-crowned">${memberOptions(c.heir && c.heir !== t.organiser ? c.heir : '')}</select></label>
-    <label>Heir after them (optional)<select name="heir" id="w-heir">${memberOptions('', { blank: true })}</select></label>
-    <div class="row"><button class="btn gold" type="submit">Long live the new monarch!</button><button class="btn ghost" type="button" data-close>Not yet</button></div>
-  </form>`;
+  return {
+    eyebrow: 'The crowning ceremony', kindIcon: 'crown', heading: t.title || 'Untitled trip',
+    lead: `This moves “${t.title}” to the archive and hands over the crown. Photos and expenses come next.`,
+    primary: 'Long live the new monarch!', gold: true, draft: 'wrap-' + t.id,
+    fields: [
+      { key: 'when', type: 'dates', icon: 'cal', label: 'When', value: { start: t.start || '', end: t.end || '' }, check: chk.dates(true), live: live.dates },
+      { key: 'attendees', type: 'people', icon: 'people', label: 'Who actually came', value: coming, live: live.coming },
+      { key: 'crowned', type: 'select', icon: 'crown', label: 'New monarch', options: personOptions({ blank: 'Choose…' }), value: c.heir && c.heir !== t.organiser ? c.heir : '', hint: 'Plans the next trip.', check: chk.required('Someone has to wear the crown.') },
+      { key: 'heir', type: 'select', icon: 'person', label: 'Heir after them', options: personOptions({ blank: 'Not decided' }), value: '' }
+    ]
+  };
 }
+
+function msSheet(m) {
+  return {
+    eyebrow: m ? 'Edit milestone' : 'New milestone', kindIcon: m ? 'text' : 'plus',
+    titlePh: 'What happened?', title: m?.title || '', primary: m ? 'Save changes' : 'Add milestone',
+    draft: m ? 'ms-' + m.id : 'new-ms',
+    fields: [
+      { key: 'date', type: 'date', icon: 'cal', label: 'Date', value: m?.date || new Date().toISOString().slice(0, 10), check: chk.required('When did it happen?') },
+      { key: 'kind', type: 'select', icon: 'tag', label: 'Type', options: Object.entries(KINDS).map(([k, [l, i]]) => ({ v: k, l: `${i} ${tr(l)}` })), value: m?.kind || 'other' },
+      { key: 'who', type: 'people', icon: 'people', label: 'Who', value: m?.who || [] },
+      { key: 'label', type: 'text', icon: 'crown', label: 'Special label', value: m?.label || '', placeholder: 'First baby of the gang' },
+      { key: 'note', type: 'area', icon: 'text', label: 'A few words', value: m?.note || '', placeholder: 'A line or two for the chronicle.' },
+      { key: 'links', type: 'area', icon: 'link', label: 'Found online', rows: 2, value: (m?.links || []).map(l => (l.title ? l.title + ' | ' : '') + l.url).join('\n'), placeholder: 'Title | https://…', hint: 'One per line. Theses, articles, festival pages…' }
+    ],
+    toMs: v => ({ title: v.title, date: v.date, kind: v.kind, label: v.label, note: v.note, who: v.who, links: parseLinks(v.links) })
+  };
+}
+
+function expSheet(t) {
+  const att = t.attendees && t.attendees.length ? t.attendees : MEMBERS.map(m => m.id);
+  const split = (v, all) => {
+    const amt = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.'));
+    const k = (all.split || []).length;
+    return amt > 0 && k ? { hint: `${kc(amt / k)} each, split ${k} ways` } : null;
+  };
+  return {
+    eyebrow: 'New expense', titlePh: 'What was it for?', titleErr: 'What was it for?',
+    primary: 'Add expense', next: 'Add & next', keepOnNext: ['payer', 'split'], draft: 'exp-' + t.id,
+    fields: [
+      { key: 'amount', type: 'money', icon: 'money', label: 'Amount', value: '', check: chk.money, live: split, watch: ['split'] },
+      { key: 'payer', type: 'select', icon: 'person', label: 'Paid by', options: personOptions(), value: me() || att[0] },
+      { key: 'split', type: 'people', icon: 'people', label: 'Split between', value: att, check: chk.someone }
+    ]
+  };
+}
+
+function albumSheet(t) {
+  return {
+    eyebrow: 'Shared photo album', kindIcon: 'image', heading: t.title || 'Untitled trip',
+    primary: 'Save link', draft: 'album-' + t.id,
+    fields: [{ key: 'url', type: 'link', icon: 'link', label: 'Link', value: safeUrl(t.photos_url), placeholder: 'Paste a Google Drive or Google Photos link', hint: SHARE_HINT, check: chk.link(true), live: live.link }]
+  };
+}
+
+function suggestSheet() {
+  const here = route().startsWith('trip-') ? 'Archive' : (PAGE_NAMES[route()] || 'Home');
+  return {
+    eyebrow: 'Suggest an edit', kindIcon: 'text', heading: 'What should change?',
+    lead: 'A typo, a wrong date, a missing joke or a new idea. Jakub sees every suggestion.',
+    primary: 'Send suggestion', draft: 'suggest',
+    fields: [
+      { key: 'page', type: 'select', icon: 'page', label: 'Which page', options: Object.values(PAGE_NAMES).concat('Whole site / new idea').map(p => ({ v: p, l: tr(p) })), value: here },
+      { key: 'text', type: 'area', icon: 'text', label: 'Your suggestion', rows: 4, value: '', placeholder: 'e.g. My nickname is spelled wrong. It should be…', check: chk.required('Write a few words first.') }
+    ]
+  };
+}
+
+const undo = rec => ({ label: 'Undo', run: async () => { await DB.remove(rec); await load(); render(); toast('Undone'); } });
 
 /* ---------------- events ---------------- */
 let pendingDelete = null;
@@ -1167,20 +1521,21 @@ document.addEventListener('click', async e => {
     catch { const r = document.createRange(); const el = $('.addr'); if (el) { r.selectNodeContents(el); getSelection().removeAllRanges(); getSelection().addRange(r); } toast('Address selected. Press Ctrl+C to copy.'); }
     return;
   }
-  if (a === 'new-plan') return openModal(tripForm(null, 'plan'), async fd => {
-    await DB.add('trips', { ...readTripForm(fd, false), status: 'planning', rsvp: {} });
-    await load(); render(); toast('Trip created. Now propose some dates!');
-  });
-  if (a === 'add-past') return openModal(tripForm(null, 'past'), async fd => {
-    await DB.add('trips', { ...readTripForm(fd, true), status: 'done' });
-    await load(); render(); toast('Added to the archive 🎟️');
-  });
-  if (a === 'add-my-trip') {
-    const m = me(); if (!m) return pickMe(true);
-    return openModal(tripForm(null, 'past', { organiser: m }), async fd => {
-      await DB.add('trips', { ...readTripForm(fd, true), status: 'done' });
-      await load(); render(); toast('Your reign is in the chronicle ♛');
-    });
+  if (a === 'new-plan') {
+    const cfg = tripSheet(null, 'plan');
+    return openSheet({ ...cfg, onSave: async v => {
+      const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'planning', rsvp: {} });
+      if (route() !== 'next') location.hash = '#next';
+      await load(); render(); toast(v.when.vote ? 'Trip file created. Now propose some dates!' : 'Trip file created. The gang can see it now.', undo(rec));
+    } });
+  }
+  if (a === 'add-past' || a === 'add-my-trip') {
+    const m = me(); if (a === 'add-my-trip' && !m) return pickMe(true);
+    const cfg = tripSheet(null, 'past', a === 'add-my-trip' ? { organiser: m } : {});
+    return openSheet({ ...cfg, onSave: async v => {
+      const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'done' });
+      await load(); render(); toast(a === 'add-my-trip' ? 'Your reign is in the chronicle ♛' : 'Added to the archive.', undo(rec));
+    } });
   }
   if (a === 'chronicle-done') {
     const m = me(); if (!m) return;
@@ -1189,9 +1544,8 @@ document.addEventListener('click', async e => {
   if (a === 'edit-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
     const past = t.status === 'done';
-    return openModal(tripForm(t, past ? 'past' : 'plan'), async fd => {
-      await DB.update(t, readTripForm(fd, past)); await load(); render(); toast('Saved');
-    });
+    const cfg = tripSheet(t, past ? 'past' : 'plan');
+    return openSheet({ ...cfg, onSave: async v => { await DB.update(t, cfg.toTrip(v)); await load(); render(); toast('Saved'); } });
   }
   if (a === 'vote') {
     const o = opt(b.dataset.opt); const m = me(); if (!o || !m) return;
@@ -1221,24 +1575,34 @@ document.addEventListener('click', async e => {
   }
   if (a === 'wrap-up') {
     const t = trip(b.dataset.trip); if (!t) return;
-    return openModal(wrapUpForm(t), async fd => {
-      const crowned = String(fd.get('crowned'));
-      let start = String(fd.get('start')), end = String(fd.get('end') || '');
-      if (!end || end < start) end = start;
-      await DB.update(t, { status: 'done', start, end, attendees: fd.getAll('attendees'), crowned, done_at: new Date().toISOString() });
-      await saveCourt({ ruler: crowned, heir: String(fd.get('heir') || '') });
+    return openSheet({ ...wrapSheet(t), onSave: async v => {
+      const crowned = v.crowned, start = v.when.start;
+      let end = v.when.end; if (!end || end < start) end = start;
+      await DB.update(t, { status: 'done', start, end, attendees: v.attendees, crowned, done_at: new Date().toISOString() });
+      await saveCourt({ ruler: crowned, heir: v.heir || '' });
       await load(); location.hash = '#after'; render();
       toast(`Long live ${member(crowned)?.name}! 👑`);
-    });
+    } });
   }
   if (a === 'del-exp') {
     const x = S.expenses.find(z => z.id === b.dataset.exp); if (!x) return;
     return act(() => DB.remove(x), 'Expense deleted');
   }
-  if (a === 'suggest') return openModal(suggestForm(), async fd => {
-    await DB.add('suggestions', { page: String(fd.get('page')), text: String(fd.get('text')).trim(), by: me() || '', done: false });
+  if (a === 'suggest') return openSheet({ ...suggestSheet(), onSave: async v => {
+    await DB.add('suggestions', { page: v.page, text: v.text, by: me() || '', done: false });
     await load(); render(); toast('Thanks! Your suggestion is in.');
-  });
+  } });
+  if (a === 'add-exp') {
+    const t = trip(b.dataset.trip); if (!t) return;
+    return openSheet({ ...expSheet(t), onSave: async (v, { next }) => {
+      const rec = await DB.add('expenses', { trip_id: t.id, what: v.title, amount: parseFloat(v.amount.replace(/\s/g, '').replace(',', '.')), payer: v.payer, split: v.split });
+      await load(); render(); if (!next) toast('Expense added.', undo(rec));
+    } });
+  }
+  if (a === 'album-link') {
+    const t = trip(b.dataset.trip); if (!t) return;
+    return openSheet({ ...albumSheet(t), onSave: async v => { await DB.update(t, { photos_url: v.url }); await load(); render(); toast('Photo link saved 📸'); } });
+  }
   if (a === 'toggle-idea') {
     const s = S.suggestions.find(x => x.id === b.dataset.idea); if (!s) return;
     return act(() => DB.update(s, { done: !s.done }), s.done ? 'Reopened' : 'Marked as done');
@@ -1249,14 +1613,18 @@ document.addEventListener('click', async e => {
     pendingDelete = null;
     return act(() => DB.remove(s), 'Suggestion deleted');
   }
-  if (a === 'add-ms') return openModal(milestoneForm(null), async fd => {
-    await DB.add('milestones', readMilestone(fd));
-    if (route() !== 'timeline') location.hash = '#timeline';
-    await load(); render(); toast('Added to the timeline');
-  });
+  if (a === 'add-ms') {
+    const cfg = msSheet(null);
+    return openSheet({ ...cfg, onSave: async v => {
+      const rec = await DB.add('milestones', cfg.toMs(v));
+      if (route() !== 'timeline') location.hash = '#timeline';
+      await load(); render(); toast('Added to the timeline', undo(rec));
+    } });
+  }
   if (a === 'edit-ms') {
     const m = S.milestones.find(x => x.id === b.dataset.ms); if (!m) return;
-    return openModal(milestoneForm(m), async fd => { await DB.update(m, readMilestone(fd)); await load(); render(); toast('Saved'); });
+    const cfg = msSheet(m);
+    return openSheet({ ...cfg, onSave: async v => { await DB.update(m, cfg.toMs(v)); await load(); render(); toast('Saved'); } });
   }
   if (a === 'del-ms') {
     const m = S.milestones.find(x => x.id === b.dataset.ms); if (!m) return;
@@ -1293,21 +1661,6 @@ document.addEventListener('submit', async e => {
     const start = String(fd.get('start')); let end = String(fd.get('end') || '');
     if (!end || end < start) end = start;
     return act(() => DB.add('date_options', { trip_id: t.id, start, end, votes: me() ? { [me()]: 'yes' } : {} }), 'Dates proposed');
-  }
-  if (f.id === 'exp-form') {
-    e.preventDefault();
-    const fd = new FormData(f);
-    const split = fd.getAll('split');
-    if (!split.length) { toast('Pick at least one person to split it between.'); return; }
-    const amount = Number(fd.get('amount'));
-    return act(() => DB.add('expenses', { trip_id: f.dataset.trip, what: String(fd.get('what')).trim(), amount, payer: String(fd.get('payer')), split }), 'Expense added');
-  }
-  if (f.id === 'photo-form') {
-    e.preventDefault();
-    const t = S.trips.find(x => x.id === f.dataset.trip); if (!t) return;
-    const url = String(new FormData(f).get('url')).trim();
-    if (!safeUrl(url)) { toast('That link should start with https://'); return; }
-    return act(() => DB.update(t, { photos_url: url }), 'Photo link saved 📸');
   }
 });
 
