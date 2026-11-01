@@ -677,3 +677,8 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 .propose-label { font-weight: 600; font-size: .9rem; margin-right: 6px; }
 .propose label { flex: 0 1 170px; }
 @media (max-width: 720px) { .poll-row { grid-template-columns: 1fr; gap: 10px; } .poll-act { justify-content: space-between; } }
+.rsvp-box { display: grid; gap: 16px; padding-top: 4px; }
+.rsvp-me { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 14px 18px; border-radius: 14px; background: var(--field); }
+.rsvp-groups { display: grid; gap: 14px; }
+.rsvp-group { display: grid; gap: 8px; }
+.rsvp-group .eyebrow { margin: 0; }

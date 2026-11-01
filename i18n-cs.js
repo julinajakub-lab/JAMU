@@ -446,6 +446,9 @@ const exact = {
   'Change album link': 'Změnit odkaz na album', 'Link the album': 'Připojit album', '+ Add expense': '+ Přidat výdaj',
   'Trip file created. Now propose some dates!': 'Výlet je založený. Teď navrhni termíny!', 'Trip file created. The gang can see it now.': 'Výlet je založený. Parta ho už vidí.',
   // ---- next trip at a glance + steps
+  'The date is set. Are you coming?': 'Termín je daný. Jedeš?', 'Can’t make it': 'Nemůže', 'Haven’t answered yet': 'Ještě neodpověděli',
+  'Tell us who you are (top right) to answer.': 'Nahoře vpravo řekni, kdo jsi, a pak odpověz.',
+  'Once the date is picked, answer with one tap. You can change it any time.': 'Až bude termín vybraný, odpověz jedním ťuknutím. Změnit to můžeš kdykoli.',
   'The date is set': 'Termín je daný', 'How we voted': 'Jak se hlasovalo', 'Chosen': 'Vybráno', 'Pick': 'Vybrat',
   'No weekends yet. Propose the first one below.': 'Zatím žádné víkendy. Navrhni první níž.', 'Haven’t voted yet:': 'Ještě nehlasovali:',
   'Propose a weekend': 'Navrhnout víkend', '+ Add': '+ Přidat',
@@ -499,6 +502,8 @@ const exact = {
 };
 
 const patterns = [
+  [/^Are you coming, (.+)\?$/, 'Jedeš, $1?'],
+  [/^(Coming|Maybe|💌 Sends love|Can’t make it|Haven’t answered yet) · (\d+)$/, (m, l, n) => `${({ 'Coming': 'Jede', 'Maybe': 'Možná', '💌 Sends love': '💌 Posílá lásku', 'Can’t make it': 'Nemůže', 'Haven’t answered yet': 'Ještě neodpověděli' })[l]} · ${n}`],
   [/^(.+) takes care of this$/, 'Tohle má na starosti $1'],
   [/^(.+) hasn’t proposed any weekends yet\.$/, 'Zatím tu nejsou žádné víkendy. Navrhne je $1.'],
   [/^(\d+) yes( · (\d+) maybe)?( · (\d+) no)?$/, (m, y, a, mb, b, n) => `ano ${y}${mb ? ` · možná ${mb}` : ''}${n ? ` · ne ${n}` : ''}`],

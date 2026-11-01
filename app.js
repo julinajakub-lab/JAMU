@@ -114,11 +114,11 @@ function translateDOM(root) {
 let demo = null;
 function demoData() {
   if (demo) return demo;
-  try { demo = JSON.parse(ls.get('jamu-demo-v3')); } catch { demo = null; }
+  try { demo = JSON.parse(ls.get('jamu-demo-v4')); } catch { demo = null; }
   if (!Array.isArray(demo)) { demo = seedDemo(); saveDemo(); }
   return demo;
 }
-function saveDemo() { ls.set('jamu-demo-v3', JSON.stringify(demo)); }
+function saveDemo() { ls.set('jamu-demo-v4', JSON.stringify(demo)); }
 function seedDemo() {
   // Example content so the demo isn't empty. The real database starts empty.
   const now = new Date().toISOString();
@@ -383,7 +383,7 @@ function todoBlock(scope) {
   if (scope === 'next' && plan) {
     const opts = S.options.filter(o => o.trip_id === plan.id);
     if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="dates">Vote on dates</button>`);
-    if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="rsvp">Answer</button>`);
+    if (m && plan.start && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="dates">Answer</button>`);
     if (m && noRide(plan).includes(m)) add(`How are you getting to <b>${esc(plan.title)}</b>? Offer your car or hop in with someone.`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="transport">Sort out my ride</button>`);
     if (m && m === plan.organiser) {
       const nextStep = crownSteps(plan).find(x => !x.done && !x.later);
@@ -648,6 +648,17 @@ function viewNext() {
   Object.values(rsvp).forEach(x => { if (tally[x] !== undefined) tally[x]++; });
 
   const coming = MEMBERS.filter(m => rsvp[m.id] === 'yes').map(m => m.id);
+  const face = id => `<span class="person-chip">${avatar(id, 'xs')}${esc(nameOf(id))}</span>`;
+  const groups = [['yes', 'Coming'], ['maybe', 'Maybe'], ['love', '💌 Sends love'], ['no', 'Can’t make it']]
+    .map(([k, l]) => [l, MEMBERS.filter(m => rsvp[m.id] === k).map(m => m.id)])
+    .concat([['Haven’t answered yet', MEMBERS.filter(m => !rsvp[m.id]).map(m => m.id)]])
+    .filter(([, ids]) => ids.length);
+  const rsvpHtml = `
+      <div class="rsvp-box" id="rsvp">
+        ${meId ? `<div class="rsvp-me"><b>${esc(`Are you coming, ${nameOf(meId)}?`)}</b><span class="seg">${RSVP.map(([k, l]) => `<button type="button" class="${k} ${rsvp[meId] === k ? 'on' : ''}" data-action="rsvp" data-who="${meId}" data-val="${k}">${l}</button>`).join('')}</span></div>` : '<p class="muted small">Tell us who you are (top right) to answer.</p>'}
+        <div class="rsvp-groups">${groups.map(([l, ids]) => `<div class="rsvp-group"><span class="eyebrow">${esc(`${l} · ${ids.length}`)}</span><div class="row" style="gap:6px">${ids.map(face).join('')}</div></div>`).join('')}</div>
+        <p class="muted small">Everyone answers only for themselves. (Nikol, we’ll believe it when we see you.)</p>
+      </div>`;
   const overview = `
     <section class="glance" aria-label="The trip at a glance">
       <div class="glance-cell"><span class="eyebrow">When</span><b>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Still voting'}</b><span class="muted small">${plan.start ? (() => { const d = daysUntil(plan.start); return d > 1 ? `in ${d} days` : d === 1 ? 'tomorrow' : d === 0 ? 'today!' : 'under way'; })() : `${opts.length} ${opts.length === 1 ? 'weekend' : 'weekends'} in the vote`}</span></div>
@@ -671,14 +682,15 @@ function viewNext() {
 
     <ol class="howto" aria-label="How this page works">
       <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
-      <li><b>Say if you’re coming</b><span>One tap next to your name. You can change it any time.</span></li>
+      <li><b>Say if you’re coming</b><span>Once the date is picked, answer with one tap. You can change it any time.</span></li>
       <li><b>Sort out your ride</b><span>Got a car? Offer the free seats. No car? Hop in with someone.</span></li>
       <li><b>Get there</b><span>On the day, tap “Navigate” and your phone takes you to the cottage.</span></li>
     </ol>
 
     <section class="panel stack" id="dates">
-      <div class="spread"><div><p class="eyebrow step-tag">Step 1 · Dates</p><h2>${plan.start ? 'The date is set' : 'When can you come?'}</h2></div></div>
+      <div class="spread"><div><p class="eyebrow step-tag">${plan.start ? 'Step 2 · Who’s coming' : 'Step 1 · Dates'}</p><h2>${plan.start ? 'The date is set. Are you coming?' : 'When can you come?'}</h2></div></div>
       ${plan.start ? `<div class="date-set"><b>${esc(fmtRange(plan.start, plan.end))}</b><span class="muted">${esc(dayRange(plan.start, plan.end))}</span></div>` : ''}
+      ${plan.start ? rsvpHtml : ''}
       ${plan.start && opts.length ? `<details class="poll-past"><summary>How we voted</summary><div class="poll">${optsHtml}</div></details>` : `
         ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
         ${opts.length ? `<div class="poll">${optsHtml}</div>` : `<p class="muted">${lead ? 'No weekends yet. Propose the first one below.' : `${esc(nameOf(plan.organiser))} hasn’t proposed any weekends yet.`}</p>`}
@@ -690,20 +702,6 @@ function viewNext() {
         <label><span class="sr">To</span><input type="date" name="end" id="opt-end" aria-label="To"></label>
         <button class="btn" type="submit">+ Add</button>
       </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
-    </section>
-
-    <section class="panel stack" id="rsvp">
-      <div class="spread">
-        <div><p class="eyebrow step-tag">Step 2 · Who’s coming</p><h2 class="num">${tally.yes} coming · ${tally.maybe} maybe</h2></div>
-        <p class="muted small">Everyone answers only for themselves. (Nikol, we’ll believe it when we see you.)</p>
-      </div>
-      <div>
-        ${MEMBERS.map(m => `
-          <div class="rsvp">
-            <div class="person">${avatar(m.id, 'xs')}<span><b>${esc(m.short)}</b> <span class="muted small">${esc(m.nick)}</span></span></div>
-            <span class="seg">${RSVP.map(([k, l]) => `<button type="button" class="${k} ${rsvp[m.id] === k ? 'on' : ''}" data-action="rsvp" data-who="${m.id}" data-val="${k}"${m.id === meId ? '' : ' disabled'}>${l}</button>`).join('')}</span>
-          </div>`).join('')}
-      </div>
     </section>
 
     ${transportPanel(plan)}
