@@ -403,6 +403,10 @@ function todoBlock() {
 function viewHome() {
   const c = court();
   const plan = planning();
+  const done = doneTrips();
+  const years = new Date().getFullYear() - 2019; // graduated through ENCOUNTER 2019
+  const together = new Date().getFullYear() - 2016;
+  const nikolCame = Math.max(1, done.filter(t => (t.attendees || []).includes('nikol')).length); // she came once, around 2021
   return `
   <div class="stack-lg">
     <section class="hero">
@@ -434,6 +438,16 @@ function viewHome() {
       <span>${esc(nameOf(plan ? plan.organiser : c.ruler))} leads the next trip</span>
       <span class="quick-go">Details →</span>
     </a>
+
+    <section>
+      <div class="section-head"><h2>By the numbers</h2></div>
+      <div class="kpis">
+        <div class="kpi"><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
+        <div class="kpi"><b>${together}</b><span class="muted small">years since we met at JAMU</span></div>
+        <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU (graduation after ENCOUNTER 2019)</span></div>
+        <div class="kpi"><b>${nikolCame}×</b><span class="muted small">Nikol arrived. About five years ago, and nobody remembers which trip.</span></div>
+      </div>
+    </section>
   </div>`;
 }
 
