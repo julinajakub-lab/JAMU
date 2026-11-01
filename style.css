@@ -110,12 +110,6 @@ p { margin: 0; }
   background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 3px; cursor: pointer; margin-left: auto;
 }
 .me:hover { border-color: var(--muted); }
-.lang { align-self: center; margin-left: auto; background: none; border: 0; padding: 6px 4px; font: 500 .78rem var(--f-body); letter-spacing: .06em; color: var(--muted); cursor: pointer; }
-.lang b { color: var(--ink); font-weight: 600; }
-.lang:hover { color: var(--ink); }
-.lang + .me { margin-left: 0; }
-.login-lang { display: flex; justify-content: flex-end; margin: -20px -14px -8px 0; }
-.login-lang .lang { margin-left: 0; }
 
 /* Slovak words in the Czech version: hover or tap for the Czech one */
 .sk { position: relative; border-bottom: 1px dotted var(--accent); cursor: help; outline-offset: 1px; }
@@ -131,7 +125,6 @@ p { margin: 0; }
   .nav a { padding-block: 10px; }
   .top .wrap { gap: 0 12px; }
   .logo .name { font-size: 1.02rem; }
-  .lang { padding-inline: 2px; }
   .me { padding-right: 8px; }
 }
 
@@ -287,10 +280,6 @@ table.sheet { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .exp:first-child { border-top: 0; }
 .amount { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
 .transfer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--r-field); background: var(--tier); box-shadow: inset 0 0 0 1px var(--line-2); }
-.photos-cta { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 18px 20px; }
-.photos-cta .eyebrow { color: inherit; opacity: .8; }
-.photos-cta h2 { color: inherit; }
-.photos-cta .btn { background: var(--accent-ink); color: var(--accent); border: 0; }
 .story { white-space: pre-wrap; max-width: 65ch; }
 .quotes { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 

@@ -25,20 +25,14 @@ const kc = n => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 0 }).for
 const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
 
 function parseDate(s) { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
-function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString(locale(), { day: 'numeric', month: lang() === 'cs' ? 'long' : 'short', year: 'numeric' }) : ''; }
+function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' }) : ''; }
 function fmtRange(a, b) {
   const s = parseDate(a), e = parseDate(b);
   if (!s) return tr('Date not set');
   if (!e || a === b) return fmtDate(a);
-  if (lang() === 'cs') {
-    const dm = d => d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
-    if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${s.getDate()}.–${fmtDate(b)}`;
-    if (s.getFullYear() === e.getFullYear()) return `${dm(s)} – ${fmtDate(b)}`;
-    return `${fmtDate(a)} – ${fmtDate(b)}`;
-  }
-  const day = d => d.getDate(), mon = d => d.toLocaleDateString('en-GB', { month: 'short' });
-  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${day(s)}–${day(e)} ${mon(e)} ${e.getFullYear()}`;
-  if (s.getFullYear() === e.getFullYear()) return `${day(s)} ${mon(s)} – ${day(e)} ${mon(e)} ${e.getFullYear()}`;
+  const dm = d => d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
+  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) return `${s.getDate()}.–${fmtDate(b)}`;
+  if (s.getFullYear() === e.getFullYear()) return `${dm(s)} – ${fmtDate(b)}`;
   return `${fmtDate(a)} – ${fmtDate(b)}`;
 }
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((d - t) / 864e5); }
@@ -53,14 +47,6 @@ function avatar(id, size = '') {
 function profilePhoto(id) {
   const list = (S.profiles || []).filter(p => p.member === id).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   return list[0]?.path || '';
-}
-function memberOptions(selected, { blank = false } = {}) {
-  return (blank ? `<option value="">— not decided —</option>` : '') +
-    MEMBERS.map(m => `<option value="${m.id}" ${m.id === selected ? 'selected' : ''}>${esc(m.name)}${m.nick ? ' · ' + esc(m.nick) : ''}</option>`).join('');
-}
-function memberChecks(name, checked = []) {
-  return `<div class="checks">${MEMBERS.map(m => `
-    <label class="check"><input type="checkbox" name="${name}" value="${m.id}" ${checked.includes(m.id) ? 'checked' : ''}>${esc(m.short)}${m.id === 'nikol' ? ' <span class="muted">(really?)</span>' : ''}</label>`).join('')}</div>`;
 }
 
 let toastTimer;
@@ -80,11 +66,10 @@ function toast(msg, action) {
 }
 
 /* ---------------- languages ---------------- */
-// The page is written in English and translated after rendering. Czech texts live in i18n-cs.js.
+// The site is Czech only. Copy is written in English here and translated after rendering; Czech texts live in i18n-cs.js.
 // {sk|cz} in a translation shows the Slovak word with a small ⓘ that reveals the Czech one.
 const I18N = window.JAMU_I18N || {};
-const lang = () => { const l = ls.get('jamu-lang'); return l === 'en' || !I18N.cs ? 'en' : 'cs'; };
-const locale = () => (lang() === 'cs' ? 'cs-CZ' : 'en-GB');
+const lang = () => (I18N.cs ? 'cs' : 'en');
 function trRaw(s) {
   const d = lang() === 'en' ? null : I18N[lang()];
   if (!d || !s) return null;
@@ -118,9 +103,6 @@ function translateDOM(root) {
       const v = el.getAttribute(a); if (v) { const t = trRaw(v.trim()); if (t != null) el.setAttribute(a, plainSk(t)); }
     }
   });
-}
-function langSwitch() {
-  return `<button class="lang" type="button" data-action="lang" title="Language / Jazyk" data-notr>${lang() === 'cs' ? '<b>CZ</b> · EN' : 'CZ · <b>EN</b>'}</button>`;
 }
 
 /* ---------------- data layer ---------------- */
@@ -253,7 +235,6 @@ function renderLogin() {
   app.innerHTML = `
   <div class="login">
     <div class="box">
-      <div class="login-lang">${langSwitch()}</div>
       <div class="mark" aria-hidden="true">SI</div>
       <div class="stack" style="gap:4px">
         <h1 style="font-size:1.5rem">Společenstvo Inscenace</h1>
@@ -354,7 +335,6 @@ function shell(active, content) {
     <div class="wrap">
       <a class="logo" href="#home"><span class="mark" aria-hidden="true">SI</span><span class="name">Společenstvo Inscenace</span></a>
       <nav class="nav" aria-label="Main">${NAV.map(([k, l]) => `<a href="#${k}" class="${active === k ? 'on' : ''}">${l}</a>`).join('')}</nav>
-      ${langSwitch()}
       <button class="me" type="button" data-action="switch-me" title="Change who you are">${m ? avatar(m, 'xs') + ' ' + esc(nameOf(m)) : 'Who are you?'}</button>
     </div>
   </header>
@@ -680,7 +660,7 @@ function viewArchive() {
   <div class="stack-lg">
     <section class="hero">
       <p class="eyebrow">Every weekend we’ve shared</p><h1>The Archive</h1>
-      <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who paid for what. Remember a trip that isn\u2019t here yet? Add it.</p>
+      <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who came. Remember a trip that isn\u2019t here yet? Add it.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button></div>
     </section>
     ${done.length ? `<div class="table-wrap"><table class="sheet">
@@ -931,7 +911,7 @@ function viewTimeline() {
       <li class="tl-item ${m.kind === 'trip' ? 'is-trip' : ''}">
         <span class="tl-dot" aria-hidden="true">${k[1]}</span>
         <div class="tl-card">
-          <p class="small muted">${esc(m.approx ? (parseDate(m.date)?.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }) || '') : fmtDate(m.date))} · ${esc(k[0])}</p>
+          <p class="small muted">${esc(m.approx ? (parseDate(m.date)?.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' }) || '') : fmtDate(m.date))} · ${esc(k[0])}</p>
           <h3>${m.trip ? `<a href="#trip-${esc(m.trip.id)}">${esc(m.title)}</a>` : esc(m.title)}</h3>
           ${m.label ? `<span class="badge">${esc(m.label)}</span>` : ''}
           ${m.note ? `<p class="small">${esc(m.note)}</p>` : ''}
@@ -1637,7 +1617,6 @@ document.addEventListener('click', async e => {
   const opt = id => S.options.find(o => o.id === id);
 
   if (a === 'switch-me') return pickMe(true);
-  if (a === 'lang') { ls.set('jamu-lang', lang() === 'cs' ? 'en' : 'cs'); return $('.top') ? render() : renderLogin(); }
   if (a === 'logout') return logout();
   if (a === 'copy') {
     try { await navigator.clipboard.writeText(b.dataset.text); toast('Address copied'); }
