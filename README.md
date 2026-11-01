@@ -1,6 +1,6 @@
-# JAMU Survivors' Club
+# Společenstvo Inscenace
 
-The private website of the JAMU class of 2016: plan cottage weekends, vote on dates, split the bills, and keep the memories. Iva is no longer with us. (She's fine.)
+The private website of Společenstvo Inscenace, the JAMU class of 2016: plan cottage weekends, vote on dates, split the bills, and keep the memories. Iva is no longer with us. (She's fine.)
 
 ## Pages
 - **Home**: the reigning monarch and heir, the next trip with a countdown, stats, a random quote.

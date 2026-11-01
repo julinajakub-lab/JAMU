@@ -146,24 +146,25 @@ async function isLoggedIn() {
 const WRONG = [
   'Wrong password. Iva, is that you?',
   'Nope. Even Nikol knows this one. She just never uses it.',
-  'Still wrong. This is worse than the dramaturgy exam.',
+  'Still wrong. This is worse than a Friday-midnight deadline.',
   'Wrong again. Ask the current king, he knows.'
 ];
 let wrongCount = 0;
 function renderLogin() {
-  document.title = 'JAMU Survivors’ Club';
+  document.title = 'Společenstvo Inscenace';
   app.innerHTML = `
   <div class="login">
     <div class="box">
-      <div class="bulbs" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      <p class="eyebrow" style="color:#f3cf72">Est. 2016 · JAMU, Brno</p>
-      <h1>JAMU Survivors’ Club</h1>
-      <p>Members only. Iva, if you’re reading this: the door is still open.</p>
+      <div class="mark" aria-hidden="true">SI</div>
+      <div class="stack" style="gap:4px">
+        <h1 style="font-size:1.5rem">Společenstvo Inscenace</h1>
+        <p class="muted small">JAMU, class of 2016. Members only. Iva, if you’re reading this: the door is still open.</p>
+      </div>
       <form id="login-form">
-        <input id="pw" type="password" autocomplete="current-password" placeholder="The group password" aria-label="Group password" required>
-        <button class="btn gold" type="submit">Let me in</button>
+        <label>Group password<input id="pw" type="password" autocomplete="current-password" required></label>
+        <button class="btn primary" type="submit">Log in</button>
         <p class="err" id="login-err" role="alert"></p>
-        ${LIVE ? '' : `<p class="small" style="opacity:.8">Demo mode: the password is <b class="mono">${esc(C.demoPassword || 'jamu2016')}</b></p>`}
+        ${LIVE ? '' : `<p class="small muted">Demo mode: the password is <b class="mono">${esc(C.demoPassword || 'jamu2016')}</b></p>`}
       </form>
     </div>
   </div>`;
@@ -241,7 +242,7 @@ function shell(active, content) {
   return `
   <header class="top">
     <div class="wrap">
-      <a class="logo" href="#home">JAMU<small>Survivors’ Club</small></a>
+      <a class="logo" href="#home"><span class="mark" aria-hidden="true">SI</span><span class="name">Společenstvo Inscenace</span></a>
       <nav class="nav" aria-label="Main">${NAV.map(([k, l]) => `<a href="#${k}" class="${active === k ? 'on' : ''}">${l}</a>`).join('')}</nav>
       <button class="me" type="button" data-action="switch-me" title="Change who you are">${m ? avatar(m, 'xs') + ' ' + esc(nameOf(m)) : 'Who are you?'}</button>
     </div>
@@ -249,7 +250,7 @@ function shell(active, content) {
   ${LIVE ? '' : `<div class="demo-banner"><div class="wrap">Demo mode: changes are saved only in this browser. Once the database is connected, the whole gang shares everything.</div></div>`}
   <main><div class="wrap">${content}</div></main>
   <footer><div class="wrap">
-    <span>Est. 2016 at JAMU, Brno. Forged in suffering, held together by love.</span>
+    <span>Est. 2016 at JAMU, Brno. Forged by deadlines, held together by love.</span>
     <span>In memory of ${esc(GHOST.name)}, who is no longer with us. (She’s fine.) · <button class="btn ghost sm" type="button" data-action="logout">Log out</button></span>
   </div></footer>`;
 }
@@ -284,11 +285,11 @@ function viewHome() {
           <div class="stack" style="gap:4px">
             <p class="eyebrow">Next trip</p>
             <h2>${esc(plan.title || 'Untitled trip')}</h2>
-            <p class="muted">${plan.place ? esc(plan.place) + ' · ' : ''}organised by 👑 ${esc(nameOf(plan.organiser))}</p>
+            <p class="muted">${plan.place ? esc(plan.place) + ' · ' : ''}organised by ♛ ${esc(nameOf(plan.organiser))}</p>
           </div>
-          ${d !== null ? `<div style="text-align:right"><div class="countdown num">${d > 0 ? d : d === 0 ? 'Today!' : '🎭'}</div><p class="muted small">${d > 0 ? (d === 1 ? 'day to go' : 'days to go') : d === 0 ? '' : 'already started'}</p></div>` : ''}
+          ${d !== null ? `<div style="text-align:right"><div class="countdown num">${d > 0 ? d : d === 0 ? 'Today' : '—'}</div><p class="muted small">${d > 0 ? (d === 1 ? 'day to go' : 'days to go') : d === 0 ? '' : 'already started'}</p></div>` : ''}
         </div>
-        <p>${plan.start ? '📅 ' + esc(fmtRange(plan.start, plan.end)) : '📅 The date is still being voted on. Have you voted yet?'}</p>
+        <p>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'The date is still being voted on. Have you voted yet?'}</p>
         <div class="row"><a class="btn primary" href="#next">Open the trip plan</a></div>
       </div>`;
   } else {
@@ -304,16 +305,16 @@ function viewHome() {
   <div class="stack-lg">
     <section class="hero">
       <p class="eyebrow">Est. 2016 · JAMU, Brno</p>
-      <h1>The JAMU Survivors’ Club</h1>
-      <p>Ten people who survived theatre management school together, plus one adopted from JevTech. Twice a year we retreat to a cottage in the woods to cook, walk, talk, and recover.</p>
+      <h1>Společenstvo Inscenace</h1>
+      <p>Ten people who survived theatre management together (plus one adopted from JevTech). Twice a year we leave the spreadsheets behind for a cottage in the woods to cook, walk, talk and recover.</p>
     </section>
 
     <section class="court" aria-label="The royal court">
-      <div class="throne">
+      <div class="throne reign">
         ${avatar(c.ruler, 'lg')}
-        <div class="who"><span class="eyebrow">👑 Reigning monarch</span><span class="name">${esc(member(c.ruler)?.name || '—')}</span><span class="muted small">${esc(member(c.ruler)?.nick || '')} · plans the next trip</span></div>
+        <div class="who"><span class="eyebrow"><span class="crown">♛</span> Reigning monarch</span><span class="name">${esc(member(c.ruler)?.name || '—')}</span><span class="muted small">${esc(member(c.ruler)?.nick || '')} · plans the next trip</span></div>
       </div>
-      <div class="throne" style="background:var(--card)">
+      <div class="throne">
         ${c.heir ? avatar(c.heir, 'lg') : '<span class="av lg" style="--h:0">?</span>'}
         <div class="who"><span class="eyebrow">Heir to the throne</span><span class="name">${esc(member(c.heir)?.name || 'Not decided')}</span><span class="muted small">${c.heir ? 'to be crowned at the end of the next trip' : 'to be decided at the next trip'}</span></div>
       </div>
@@ -323,11 +324,11 @@ function viewHome() {
 
     <section>
       <div class="section-head"><h2>By the numbers</h2></div>
-      <div class="stats">
-        <div class="stat"><b class="num">${done.length}</b><span class="muted small">trips in the archive</span></div>
-        <div class="stat"><b class="num">${years}</b><span class="muted small">years since JAMU tried to break us</span></div>
-        <div class="stat"><b class="num">${done.filter(t => t.crowned).length}</b><span class="muted small">crowns handed over</span></div>
-        <div class="stat"><b class="num">${nikolCame}/${done.length}</b><span class="muted small">trips Nikol actually came to</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="col">A</span><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
+        <div class="kpi"><span class="col">B</span><b>${years}</b><span class="muted small">years since JAMU</span></div>
+        <div class="kpi"><span class="col">C</span><b>${done.filter(t => t.crowned).length}</b><span class="muted small">crowns handed over</span></div>
+        <div class="kpi"><span class="col">D</span><b>${nikolCame}/${done.length}</b><span class="muted small">Nikol’s attendance</span></div>
       </div>
     </section>
 
@@ -345,7 +346,7 @@ function viewGang() {
   const cards = MEMBERS.map(m => {
     const trips = done.filter(t => (t.attendees || []).includes(m.id)).length;
     const crowns = done.filter(t => t.organiser === m.id).length;
-    const badge = m.id === c.ruler ? '<span class="badge">👑 Reigning</span>' : m.id === c.heir ? '<span class="badge">Heir</span>' : m.id === 'dalibor' ? '<span class="badge">Adopted</span>' : '';
+    const badge = m.id === c.ruler ? '<span class="badge">♛ Reigning</span>' : m.id === c.heir ? '<span class="badge">Heir</span>' : m.id === 'dalibor' ? '<span class="badge">Adopted</span>' : '';
     return `
       <article class="panel member">
         ${badge}
@@ -354,16 +355,16 @@ function viewGang() {
           <h3>${esc(m.name)}</h3>
           <p class="nick ${m.nick ? '' : 'unset'}">${m.nick ? esc(m.nick) : 'nickname not set yet'}</p>
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
-          <div class="tally num"><span>🏕️ ${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>👑 ${crowns} organised</span>${m.id === 'nikol' ? '<span>💌 ∞ love sent</span>' : ''}</div>
+          <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>∞ love sent 💌</span>' : ''}</div>
         </div>
       </article>`;
   }).join('');
   return `
   <div class="stack-lg">
     <section class="hero">
-      <p class="eyebrow">Cast list</p>
+      <p class="eyebrow">10 active members · 1 no longer with us</p>
       <h1>The Gang</h1>
-      <p>Met at JAMU in 2016. Bonded by a common enemy (the workload). Stayed for the love.</p>
+      <p>Met at JAMU in 2016. Bonded by a common enemy (the workload and its deadlines). Stayed for the love.</p>
     </section>
     <section class="gang">
       ${cards}
@@ -374,7 +375,7 @@ function viewGang() {
           <h3>${esc(GHOST.name)}</h3>
           <p class="nick unset">2016 – 2016-ish</p>
           <p class="small" style="margin-top:6px">Is no longer with us. (She’s absolutely fine. She just never wanted to hang out.)</p>
-          <div class="tally"><span>🏕️ 0 trips</span><span>🕊️ forever in our hearts</span></div>
+          <div class="tally"><span>0 trips</span><span>forever in our hearts</span></div>
         </div>
       </article>
     </section>
@@ -391,7 +392,7 @@ function viewNext() {
     <div class="stack-lg">
       <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1></section>
       <div class="empty">
-        <div class="big">👑</div>
+        <div class="big">♛</div>
         <h3>${esc(nameOf(c.ruler))}, the stage is yours.</h3>
         <p class="muted">Start a plan: add the cottage, then propose dates for everyone to vote on.</p>
         <button class="btn primary" type="button" data-action="new-plan">Start planning the next trip</button>
@@ -432,9 +433,9 @@ function viewNext() {
   return `
   <div class="stack-lg">
     <section class="hero">
-      <p class="eyebrow">Next trip · organised by 👑 ${esc(nameOf(plan.organiser))}</p>
+      <p class="eyebrow">Next trip · organised by ♛ ${esc(nameOf(plan.organiser))}</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
-      <p>${plan.start ? '📅 ' + esc(fmtRange(plan.start, plan.end)) : '📅 Date not decided yet. Vote below.'}</p>
+      <p>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Date not decided yet. Vote below.'}</p>
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>
     </section>
 
@@ -444,8 +445,8 @@ function viewNext() {
         <h2>${esc(plan.place || 'Place not set yet')}</h2>
         ${addr ? `<p class="addr">${esc(addr)}</p>
           <div class="row">
-            <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">🚗 Navigate (Google Maps)</a>
-            <a class="btn" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz</a>
+            <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate in Google Maps ↗</a>
+            <a class="btn" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
             <button class="btn" type="button" data-action="copy" data-text="${esc(addr)}">Copy address</button>
           </div>` : `<p class="muted">No address yet. <button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button></p>`}
         ${plan.notes ? `<div class="stack" style="gap:4px"><p class="eyebrow">Good to know</p><p class="story">${esc(plan.notes)}</p></div>` : ''}
@@ -479,7 +480,7 @@ function viewNext() {
 
     <section class="panel spread">
       <div class="stack" style="gap:4px"><h3>Back home already?</h3><p class="muted small">Wrap up the trip: confirm who came, crown the next monarch, then add photos and expenses.</p></div>
-      <button class="btn gold" type="button" data-action="wrap-up" data-trip="${plan.id}">👑 Wrap up &amp; crown the next ruler</button>
+      <button class="btn gold" type="button" data-action="wrap-up" data-trip="${plan.id}">♛ Wrap up &amp; crown the next ruler</button>
     </section>
   </div>`;
 }
@@ -488,36 +489,32 @@ function viewArchive() {
   const done = doneTrips();
   return `
   <div class="stack-lg">
-    <section class="hero spread" style="align-items:end">
+    <section class="spread" style="align-items:end">
       <div class="stack" style="gap:8px"><p class="eyebrow">Every weekend we survived</p><h1>The Archive</h1></div>
       <button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button>
     </section>
-    ${done.length ? `<div class="tickets">${done.map(ticket).join('')}</div>` : `
+    ${done.length ? `<div class="table-wrap"><table class="sheet">
+      <thead><tr><th></th><th><span class="col">A</span>Date</th><th><span class="col">B</span>Trip</th><th><span class="col">C</span>Organiser</th><th><span class="col">D</span>Who came</th><th><span class="col">E</span>Photos</th></tr></thead>
+      <tbody>${done.map((t, i) => tripRow(t, i)).join('')}</tbody></table></div>` : `
       <div class="empty">
         <div class="big">🎟️</div>
         <h3>The archive is empty</h3>
-        <p class="muted">Our memory is worse than our JAMU grades. Add the trips you remember, one ticket at a time.</p>
+        <p class="muted">Our memory is worse than our project documentation. Add the trips you remember, one row at a time.</p>
         <button class="btn primary" type="button" data-action="add-past">+ Add the first trip</button>
       </div>`}
   </div>`;
 }
-function ticket(t) {
-  const d = parseDate(t.start);
-  const n = (t.attendees || []).length;
+function tripRow(t, i) {
+  const href = '#trip-' + esc(t.id);
   return `
-  <a class="ticket" href="#trip-${esc(t.id)}">
-    <div class="stub">
-      <span class="mo">${d ? d.toLocaleDateString('en-GB', { month: 'short' }) : '???'}</span>
-      <span class="yr num">${d ? d.getFullYear() : '—'}</span>
-      <span class="admit">ADMIT ${n || '?'}</span>
-    </div>
-    <div class="body">
-      <h3>${esc(t.title || 'Untitled trip')}</h3>
-      <p class="muted small">${esc(fmtRange(t.start, t.end))}${t.place ? ' · ' + esc(t.place) : ''}</p>
-      <p class="small">👑 ${esc(nameOf(t.organiser))}${t.crowned ? ` → crowned ${esc(nameOf(t.crowned))}` : ''}${(t.attendees || []).includes('nikol') ? ' · 🦄 Nikol came!' : ''}</p>
-      <div class="row"><div class="av-row">${(t.attendees || []).map(id => avatar(id, 'xs')).join('')}</div>${safeUrl(t.photos_url) ? '<span class="chip">📸 photos</span>' : ''}</div>
-    </div>
-  </a>`;
+  <tr data-href="${href}">
+    <td class="rn">${i + 1}</td>
+    <td class="date">${esc(fmtRange(t.start, t.end))}</td>
+    <td><a class="trip-link" href="${href}">${esc(t.title || 'Untitled trip')}</a>${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
+    <td class="small"><span class="crown">♛</span> ${esc(nameOf(t.organiser))}${t.crowned ? ` <span class="muted">→ ${esc(nameOf(t.crowned))}</span>` : ''}</td>
+    <td><div class="row" style="gap:6px"><div class="av-row">${(t.attendees || []).map(id => avatar(id, 'xs')).join('')}</div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol came</span>' : ''}</div></td>
+    <td>${safeUrl(t.photos_url) ? `<a class="small" target="_blank" rel="noopener" href="${esc(t.photos_url)}">Album ↗</a>` : '<span class="muted small">—</span>'}</td>
+  </tr>`;
 }
 
 function viewTrip(t, { after = false } = {}) {
@@ -534,14 +531,14 @@ function viewTrip(t, { after = false } = {}) {
       <p class="eyebrow">${after ? 'Just got back from' : 'From the archive'}</p>
       <h1>${esc(t.title || 'Untitled trip')}</h1>
       <p>${esc(fmtRange(t.start, t.end))}${t.place ? ' · ' + esc(t.place) : ''}</p>
-      <p class="small">👑 Organised by <b>${esc(member(t.organiser)?.name || '—')}</b>${t.crowned ? ` · crowned at the end: <b>${esc(member(t.crowned)?.name)}</b>` : ''}</p>
+      <p class="small"><span class="crown">♛</span> Organised by <b>${esc(member(t.organiser)?.name || '—')}</b>${t.crowned ? ` · crowned at the end: <b>${esc(member(t.crowned)?.name)}</b>` : ''}</p>
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${t.id}">Edit</button>${after ? `<a class="btn sm ghost" href="#trip-${esc(t.id)}">Permalink</a>` : ''}</div>
     </section>
 
     ${photos ? `
       <section class="photos-cta">
         <div class="stack" style="gap:2px"><p class="eyebrow" style="color:#f3cf72">Photos</p><h2>All the pictures are in one album</h2></div>
-        <a class="btn" target="_blank" rel="noopener" href="${esc(photos)}">📸 Open the photos</a>
+        <a class="btn" target="_blank" rel="noopener" href="${esc(photos)}">Open the album ↗</a>
       </section>` : `
       <section class="panel stack">
         <p class="eyebrow">Photos</p>
@@ -554,7 +551,7 @@ function viewTrip(t, { after = false } = {}) {
       </section>`}
 
     <section class="panel stack">
-      <div class="spread"><div><p class="eyebrow">Who was there</p><h3 class="num">${(t.attendees || []).length} survivors</h3></div>${(t.attendees || []).includes('nikol') ? '<span class="badge">🦄 Nikol actually came</span>' : ''}</div>
+      <div class="spread"><div><p class="eyebrow">Who was there</p><h3 class="num">${(t.attendees || []).length} survivors</h3></div>${(t.attendees || []).includes('nikol') ? '<span class="badge">Nikol actually came</span>' : ''}</div>
       <div class="row">${(t.attendees || []).map(id => `<span class="row" style="gap:6px">${avatar(id, 'xs')}<span class="small">${esc(nameOf(id))}</span></span>`).join('') || '<span class="muted small">Not filled in. Use Edit to add who came.</span>'}</div>
     </section>
 
@@ -646,7 +643,7 @@ function tripForm(t, mode) {
     <label>Name of the trip<input name="title" id="f-title" required value="${esc(t?.title)}" placeholder="${past ? 'e.g. The one where the stove exploded' : 'e.g. Spring weekend at the cottage'}"></label>
     <div class="grid2">
       <label>Place<input name="place" id="f-place" value="${esc(t?.place)}" placeholder="Chata u Lesa"></label>
-      <label>Organiser 👑<select name="organiser" id="f-org">${memberOptions(t?.organiser || court().ruler)}</select></label>
+      <label>Organiser<select name="organiser" id="f-org">${memberOptions(t?.organiser || court().ruler)}</select></label>
     </div>
     <label>Address (for navigation)<input name="address" id="f-address" value="${esc(t?.address)}" placeholder="Street, number, town"></label>
     <div class="grid2">
@@ -677,7 +674,7 @@ function wrapUpForm(t) {
   const c = court();
   const coming = Object.entries(t.rsvp || {}).filter(([, v]) => v === 'yes').map(([k]) => k);
   return `
-  <div class="spread"><h2>👑 The crowning ceremony</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
+  <div class="spread"><h2>The crowning ceremony ♛</h2><button class="btn sm ghost" type="button" data-close>Close</button></div>
   <form>
     <p class="muted">This moves “${esc(t.title)}” to the archive and hands over the crown. Photos and expenses come next.</p>
     <div class="grid2">
@@ -694,6 +691,8 @@ function wrapUpForm(t) {
 /* ---------------- events ---------------- */
 let pendingDelete = null;
 document.addEventListener('click', async e => {
+  const row = e.target.closest('tr[data-href]');
+  if (row && !e.target.closest('a')) { location.hash = row.dataset.href; return; }
   const b = e.target.closest('[data-action]');
   if (!b) return;
   const a = b.dataset.action;
@@ -810,15 +809,15 @@ function render() {
   else if (r === 'archive') html = viewArchive();
   else if (r === 'after') html = viewAfter();
   else { active = 'home'; html = viewHome(); }
-  const titles = { home: 'JAMU Survivors’ Club', gang: 'The Gang', next: 'Next Trip', archive: 'Archive', after: 'After the Trip' };
-  document.title = (titles[active] && active !== 'home' ? titles[active] + ' · ' : '') + 'JAMU Survivors’ Club';
+  const titles = { home: 'Společenstvo Inscenace', gang: 'The Gang', next: 'Next Trip', archive: 'Archive', after: 'After the Trip' };
+  document.title = (titles[active] && active !== 'home' ? titles[active] + ' · ' : '') + 'Společenstvo Inscenace';
   app.innerHTML = shell(active, html);
 }
 window.addEventListener('hashchange', () => { pendingDelete = null; if ($('.top')) { render(); window.scrollTo(0, 0); } });
 
 async function start() {
   if (!(await isLoggedIn())) return renderLogin();
-  app.innerHTML = '<div class="loading">Raising the curtain…</div>';
+  app.innerHTML = '<div class="loading">Loading…</div>';
   try { await load(); }
   catch (e) {
     console.error(e);

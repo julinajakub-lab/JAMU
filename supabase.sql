@@ -1,4 +1,4 @@
--- JAMU Survivors' Club: database setup.
+-- Společenstvo Inscenace: database setup.
 -- Paste this whole file into Supabase → SQL Editor → New query, then press "Run".
 
 create table if not exists public.records (
