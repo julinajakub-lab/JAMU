@@ -325,10 +325,10 @@ function viewHome() {
     <section>
       <div class="section-head"><h2>By the numbers</h2></div>
       <div class="kpis">
-        <div class="kpi"><span class="col">A</span><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
-        <div class="kpi"><span class="col">B</span><b>${years}</b><span class="muted small">years since JAMU</span></div>
-        <div class="kpi"><span class="col">C</span><b>${done.filter(t => t.crowned).length}</b><span class="muted small">crowns handed over</span></div>
-        <div class="kpi"><span class="col">D</span><b>${nikolCame}/${done.length}</b><span class="muted small">Nikol’s attendance</span></div>
+        <div class="kpi"><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
+        <div class="kpi"><b>${years}</b><span class="muted small">years since JAMU</span></div>
+        <div class="kpi"><b>${done.filter(t => t.crowned).length}</b><span class="muted small">crowns handed over</span></div>
+        <div class="kpi"><b>${nikolCame}/${done.length}</b><span class="muted small">Nikol’s attendance</span></div>
       </div>
     </section>
 
@@ -494,8 +494,8 @@ function viewArchive() {
       <button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button>
     </section>
     ${done.length ? `<div class="table-wrap"><table class="sheet">
-      <thead><tr><th></th><th><span class="col">A</span>Date</th><th><span class="col">B</span>Trip</th><th><span class="col">C</span>Organiser</th><th><span class="col">D</span>Who came</th><th><span class="col">E</span>Photos</th></tr></thead>
-      <tbody>${done.map((t, i) => tripRow(t, i)).join('')}</tbody></table></div>` : `
+      <thead><tr><th>Date</th><th>Trip</th><th>Organiser</th><th>Who came</th><th>Photos</th></tr></thead>
+      <tbody>${done.map((t, i) => tripRow(t)).join('')}</tbody></table></div>` : `
       <div class="empty">
         <div class="big">🎟️</div>
         <h3>The archive is empty</h3>
@@ -504,11 +504,10 @@ function viewArchive() {
       </div>`}
   </div>`;
 }
-function tripRow(t, i) {
+function tripRow(t) {
   const href = '#trip-' + esc(t.id);
   return `
   <tr data-href="${href}">
-    <td class="rn">${i + 1}</td>
     <td class="date">${esc(fmtRange(t.start, t.end))}</td>
     <td><a class="trip-link" href="${href}">${esc(t.title || 'Untitled trip')}</a>${t.place ? `<br><span class="muted small">${esc(t.place)}</span>` : ''}</td>
     <td class="small"><span class="crown">♛</span> ${esc(nameOf(t.organiser))}${t.crowned ? ` <span class="muted">→ ${esc(nameOf(t.crowned))}</span>` : ''}</td>
