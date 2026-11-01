@@ -469,10 +469,13 @@ function viewHome() {
 
     <div class="home-intro">
     <section class="letter">
-      <p class="eyebrow">Welcome, gang</p>
+      <p class="eyebrow">A letter to start with</p>
       <div class="letter-body">
-        <p>This is our own little corner of the internet.</p>
-        <p>We met at JAMU in 2016, survived more deadlines than anyone should (and one whole international festival), and somewhere along the way became family. School brought us together. What we share keeps us there: new jobs and new homes, babies, worries, big questions about the world and small ones about dinner. Every time we sit at a cottage table, someone says “we should write this down”. So here it is: one place for everything that holds us together.</p>
+        <p class="greeting">Hi, friends,</p>
+        <p>we met at JAMU in 2016. Deadlines, long nights over schoolwork and one whole international festival brought us together. Almost ten years later, classmates have become family. We are there for each other’s new jobs and new homes, babies and worries, big questions about the world and small ones about dinner.</p>
+        <p>I love you very much, and I know we all love each other, even when we only manage to meet a few times a year.</p>
+        <p class="letter-sep" aria-hidden="true">· · ·</p>
+        <p>So why this page? So our trips are easier to plan and nothing from them gets lost. Until now everything was scattered across chats, spreadsheets and Drive folders. Now it’s all in one place:</p>
         <ul class="letter-list">
           <li><a href="#next"><b>Plan the next trip.</b></a> Vote on dates, say if you’re coming, and find the cottage with one tap.</li>
           <li><a href="#archive"><b>Remember the old ones.</b></a> Every trip with its photos, stories and the quotes we’ll never live down.</li>

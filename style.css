@@ -442,6 +442,8 @@ body.has-sheet { overflow: hidden; }
 /* ---------- Welcome letter ---------- */
 .letter { display: grid; gap: 12px; max-width: 680px; }
 .letter-body { display: grid; gap: 12px; font-size: 1.02rem; }
+.letter-body .greeting { font-family: var(--f-display); font-size: 1.35rem; margin-bottom: -4px; }
+.letter-sep { text-align: center; color: var(--accent); letter-spacing: .4em; margin: 4px 0; }
 .letter-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .letter-list li { padding-left: 18px; position: relative; }
 .letter-list li::before { content: ""; position: absolute; left: 2px; top: .65em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
