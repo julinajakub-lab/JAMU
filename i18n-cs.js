@@ -101,6 +101,7 @@ const exact = {
   'Built for us with': 'Pro nás, s láskou',
   'Start here': 'Začni tady',
   'Just for you': 'Jen pro tebe',
+  'Details →': 'Detaily →',
   'What you can do right now': 'Co můžeš udělat {teraz|teď}',
   'First, tell the site who you are, so your votes and photos get your name.': 'Nejdřív řekni stránce, kdo jsi, ať jsou tvoje hlasy a fotky pod tvým jménem.',
   'Pick my name': 'Vybrat moje jméno',
@@ -478,6 +479,7 @@ const exact = {
 };
 
 const patterns = [
+  [/^(.+) leads the next trip$/, '$1 vede další výlet'],
   [/^Leaving from: (.+)$/, 'Odjezd: $1'],
   [/^You’re riding with (.+)\. 🚗$/, 'Sedíš v autě, řídí $1. 🚗'],
   [/^(\d+) free seats?$/, (m, n) => `${n} ${plural(n, 'volné místo', 'volná místa', 'volných míst')}`],

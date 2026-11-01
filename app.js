@@ -349,20 +349,6 @@ function shell(active, content) {
 }
 
 /* ---------------- views ---------------- */
-const FALLBACK_QUOTES = [
-  '“Iva is no longer with us.”',
-  '“Is Nikol here yet?” Nobody has asked this since 2017.',
-  '“If we survived SETKÁNÍ/ENCOUNTER, we can survive one weekend in a cottage.”',
-  '“Deadline? We don’t do deadlines anymore. We do dinner.”',
-  '“Whatever JAMU did to us, one cottage weekend undoes it.”',
-  '“Who brought the bottle opener?” — every trip, ever'
-];
-function allQuotes() {
-  const q = [];
-  S.trips.forEach(t => (t.quotes || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(s => q.push({ text: s, trip: t })));
-  return q;
-}
-
 function todoBlock() {
   const m = me();
   const plan = planning();
@@ -389,12 +375,12 @@ function todoBlock() {
   }
   if (plan) {
     const opts = S.options.filter(o => o.trip_id === plan.id);
-    if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<a class="btn primary sm" href="#next">Vote on dates</a>`);
-    if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<a class="btn primary sm" href="#next">Answer</a>`);
-    if (m && noRide(plan).includes(m)) add(`How are you getting to <b>${esc(plan.title)}</b>? Offer your car or hop in with someone.`, `<a class="btn primary sm" href="#transport" data-action="scroll-roles">Sort out my ride</a>`);
+    if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="dates">Vote on dates</button>`);
+    if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="rsvp">Answer</button>`);
+    if (m && noRide(plan).includes(m)) add(`How are you getting to <b>${esc(plan.title)}</b>? Offer your car or hop in with someone.`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="transport">Sort out my ride</button>`);
     if (m && m === plan.organiser) {
       const nextStep = crownSteps(plan).find(x => !x.done && !x.later);
-      if (nextStep) add(`♛ You’re leading <b>${esc(plan.title)}</b>. Next step:`, `<a class="btn primary sm" href="#next">${nextStep.text}</a>`);
+      if (nextStep) add(`♛ You’re leading <b>${esc(plan.title)}</b>. Next step:`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="roles">${nextStep.text}</button>`);
     }
   } else if (m && m === court().ruler) {
     add('You’re the reigning monarch, so the next trip is yours to plan. Start with the cottage and a few date options.', `<button class="btn primary sm" type="button" data-action="new-plan">Plan the next trip</button>`);
@@ -417,38 +403,6 @@ function todoBlock() {
 function viewHome() {
   const c = court();
   const plan = planning();
-  const done = doneTrips();
-  const years = new Date().getFullYear() - 2019; // graduated through ENCOUNTER 2019
-  const together = new Date().getFullYear() - 2016;
-  const nikolCame = Math.max(1, done.filter(t => (t.attendees || []).includes('nikol')).length); // she came once, around 2021
-  const quotes = allQuotes();
-  const q = quotes.length ? quotes[Math.floor(Math.random() * quotes.length)] : { text: FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)] };
-  const todos = todoBlock();
-  let nextBlock;
-  if (plan) {
-    const d = plan.start ? daysUntil(plan.start) : null;
-    nextBlock = `
-      <div class="panel stack">
-        <div class="spread">
-          <div class="stack" style="gap:4px">
-            <p class="eyebrow">Next trip</p>
-            <h2>${esc(plan.title || 'Untitled trip')}</h2>
-            <p class="muted">${plan.place ? esc(plan.place) + ' · ' : ''}organised by ♛ ${esc(nameOf(plan.organiser))}</p>
-          </div>
-          ${d !== null ? `<div style="text-align:right"><div class="countdown num">${d > 0 ? d : d === 0 ? 'Today' : '—'}</div><p class="muted small">${d > 0 ? (d === 1 ? 'day to go' : 'days to go') : d === 0 ? '' : 'already started'}</p></div>` : ''}
-        </div>
-        <p>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'The date is still being voted on. Have you voted yet?'}</p>
-        <div class="row"><a class="btn primary" href="#next">Open the trip plan</a></div>
-      </div>`;
-  } else {
-    nextBlock = `
-      <div class="empty">
-        <div class="big">🏕️</div>
-        <h3>No trip planned yet</h3>
-        <p class="muted">${esc(nameOf(c.ruler))}, your people are waiting.</p>
-        <a class="btn primary" href="#next">Start planning</a>
-      </div>`;
-  }
   return `
   <div class="stack-lg">
     <section class="hero">
@@ -475,37 +429,11 @@ function viewHome() {
       </div>
     </section>
 
-    <section class="court" aria-label="The royal court">
-      <div class="throne reign">
-        ${avatar(c.ruler, 'lg')}
-        <div class="who"><span class="eyebrow"><span class="crown">♛</span> Reigning monarch</span><span class="name">${esc(member(c.ruler)?.name || '—')}</span><span class="muted small">${esc(member(c.ruler)?.nick || '')} · plans the next trip</span></div>
-      </div>
-      <div class="throne">
-        ${c.heir ? avatar(c.heir, 'lg') : '<span class="av lg" style="--h:0">?</span>'}
-        <div class="who"><span class="eyebrow">Heir to the throne</span><span class="name">${esc(member(c.heir)?.name || 'Not decided')}</span><span class="muted small">${c.heir ? 'to be crowned at the end of the next trip' : 'to be decided at the next trip'}</span></div>
-      </div>
-    </section>
-
-    <div class="home-now${todos ? '' : ' solo'}">
-      ${nextBlock}
-      ${todos}
-    </div>
-
-    <section>
-      <div class="section-head"><h2>By the numbers</h2></div>
-      <div class="kpis">
-        <div class="kpi"><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
-        <div class="kpi"><b>${together}</b><span class="muted small">years since we met at JAMU</span></div>
-        <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU (graduation after ENCOUNTER 2019)</span></div>
-        <div class="kpi"><b>${nikolCame}×</b><span class="muted small">Nikol arrived. About five years ago, and nobody remembers which trip.</span></div>
-      </div>
-    </section>
-
-    <section class="stack quote-block" style="gap:8px">
-      <p class="eyebrow">From our memories</p>
-      <p class="quote">${esc(q.text)}</p>
-      ${q.trip ? `<p class="muted small">from <a href="#trip-${esc(q.trip.id)}">${esc(q.trip.title)}</a></p>` : ''}
-    </section>
+    <a class="quick-next" href="#next">
+      <span class="crown" aria-hidden="true">♛</span>
+      <span>${esc(nameOf(plan ? plan.organiser : c.ruler))} leads the next trip</span>
+      <span class="quick-go">Details →</span>
+    </a>
   </div>`;
 }
 
@@ -668,6 +596,7 @@ function viewNext() {
   if (!plan) return `
     <div class="stack-lg">
       <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1></section>
+      ${todoBlock()}
       <div class="empty">
         <div class="big">♛</div>
         <h3>${esc(nameOf(c.ruler))}, the stage is yours.</h3>
@@ -717,6 +646,8 @@ function viewNext() {
       ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
 
+    ${todoBlock()}
+
     <ol class="howto" aria-label="How this page works">
       <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
       <li><b>Say if you\u2019re coming</b><span>One tap next to your name. You can change it any time.</span></li>
@@ -740,7 +671,7 @@ function viewNext() {
         ${plan.notes ? `<div class="stack" style="gap:4px"><p class="eyebrow">Good to know</p><p class="story">${esc(plan.notes)}</p></div>` : ''}
       </section>
 
-      <section class="panel stack">
+      <section class="panel stack" id="dates">
         <div class="spread"><div><p class="eyebrow">Date voting</p><h2>When can you come?</h2></div></div>
         ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
         <div>${optsHtml || '<p class="muted">No dates proposed yet.</p>'}</div>
@@ -752,7 +683,7 @@ function viewNext() {
       </section>
     </div>
 
-    <section class="panel stack">
+    <section class="panel stack" id="rsvp">
       <div class="spread">
         <div><p class="eyebrow">Who’s coming</p><h2 class="num">${tally.yes} coming · ${tally.maybe} maybe</h2></div>
         <p class="muted small">Everyone answers only for themselves. (Nikol, we’ll believe it when we see you.)</p>
@@ -1809,12 +1740,6 @@ document.addEventListener('click', async e => {
     if (pendingDelete !== o.id) { pendingDelete = o.id; b.textContent = tr('Sure?'); return; }
     pendingDelete = null;
     return act(() => DB.remove(o), 'Date removed');
-  }
-  if (a === 'scroll-roles') {
-    e.preventDefault();
-    if (route() !== 'next') { location.hash = '#next'; setTimeout(() => document.getElementById('transport')?.scrollIntoView({ behavior: 'smooth' }), 120); }
-    else document.getElementById('transport')?.scrollIntoView({ behavior: 'smooth' });
-    return;
   }
   if (a === 'car-join' || a === 'car-leave' || a === 'car-del' || a === 'own-way') {
     const t = planning(); const m = me(); if (!t || !m) return;
