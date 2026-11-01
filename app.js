@@ -110,11 +110,11 @@ function translateDOM(root) {
 let demo = null;
 function demoData() {
   if (demo) return demo;
-  try { demo = JSON.parse(ls.get('jamu-demo')); } catch { demo = null; }
+  try { demo = JSON.parse(ls.get('jamu-demo-v2')); } catch { demo = null; }
   if (!Array.isArray(demo)) { demo = seedDemo(); saveDemo(); }
   return demo;
 }
-function saveDemo() { ls.set('jamu-demo', JSON.stringify(demo)); }
+function saveDemo() { ls.set('jamu-demo-v2', JSON.stringify(demo)); }
 function seedDemo() {
   // Example content so the demo isn't empty. The real database starts empty.
   const now = new Date().toISOString();
@@ -616,7 +616,7 @@ function viewNext() {
   if (!plan) return `
     <div class="stack-lg">
       <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1>
-        <p>${esc(`Welcome to the planning room. It’s empty for now, because nobody has started the next trip yet. Once ${nameOf(c.ruler)} does, this is where we vote on dates, say if we’re coming and work out how to get there.`)}</p></section>
+        <p>Welcome to the planning room. It\u2019s empty for now, because the next trip hasn\u2019t been started yet. Once whoever wears the crown starts it, this is where we vote on dates, say if we\u2019re coming and work out how to get there.</p></section>
       ${handover()}
       ${todoBlock()}
       <div class="empty">
@@ -664,7 +664,7 @@ function viewNext() {
     <section class="hero">
       <p class="eyebrow">Next trip · organised by ♛ ${esc(nameOf(plan.organiser))}</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
-      <p>${esc(`Welcome to the planning room, where our next weekend together takes shape. ${nameOf(plan.organiser)} leads it and decides the dates, the cottage and the address. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.`)}</p>
+      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates, the cottage and the address. The rest of us vote, say if we\u2019re coming and sort out how to get there. Everything you need is below, step by step.</p>
       <p class="hero-date">${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Date not decided yet. Vote below.'}</p>
       ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
