@@ -467,8 +467,6 @@ function groupTasks() {
   }
   if (plan && plan.start) {
     list.push({ id: 'rsvp', title: 'Say if you’re coming on the next trip', href: '#next', who: all, done: id => !!(plan.rsvp || {})[id] });
-    const going = goingTo(plan);
-    if (going.length) list.push({ id: 'ride', title: 'Sort out how you get to the cottage', href: '#next', who: going, done: id => hasRide(plan, id) });
   }
   const owers = MEMBERS.filter(m => PAST_RULERS.includes(m.id) || tripsBy(m.id).length).map(m => m.id);
   if (owers.length) list.push({ id: 'chronicle', title: 'Write the archive pages of the trips you led', href: '#archive', who: owers, done: id => chronicleState(id) === 'done' });
@@ -581,68 +579,6 @@ function stepRow(s) {
     : s.missing ? '<span class="muted small">Everyone’s done.</span>' : '';
   return `<li class="duty ${state}"><span class="tick" aria-hidden="true">${mark}</span><span class="stack" style="gap:4px"><span>${s.text}</span>${who}</span></li>`;
 }
-function rolesPanel(t) {
-  const lead = leads(t);
-  const steps = crownSteps(t).map(stepRow).join('');
-  return `
-    <section class="panel stack duties crown-duties" id="roles">
-      <div class="spread">
-        <div><p class="eyebrow"><span class="crown">♛</span> The king or queen’s list</p><h2>${esc(nameOf(t.organiser))} takes care of this</h2><p class="muted small">The rest of us just follow the two steps above. If something’s unclear, ask the crown.</p></div>
-      </div>
-      <ul class="duty-list">${steps}</ul>
-      ${lead && t.start && daysUntil(t.start) <= 0 ? `<div class="row"><button class="btn gold" type="button" data-action="wrap-up" data-trip="${t.id}">♛ Back home? Wrap up &amp; crown the next ruler</button></div>` : ''}
-    </section>`;
-}
-
-function transportPanel(t, cottageHtml = '') {
-  const m = me();
-  const cars = carsOf(t);
-  const own = t.own || [];
-  const coming = goingTo(t);
-  const waiting = noRide(t);
-  const free = cars.reduce((n, c) => n + Math.max(0, (c.seats || 0) - c.riders.length), 0);
-  const myCar = m && cars.find(c => c.driver === m);
-  const mine = m && (myCar || cars.some(c => c.riders.includes(m)) || own.includes(m));
-  const chip = id => `<span class="person-chip">${avatar(id, 'xs')}${esc(nameOf(id))}</span>`;
-  const carHtml = cars.map(c => {
-    const left = Math.max(0, (c.seats || 0) - c.riders.length);
-    const inIt = m && c.riders.includes(m);
-    const canHop = m && !inIt && c.driver !== m && left > 0;
-    return `
-      <div class="car">
-        <div class="spread">
-          <div class="row" style="gap:10px">${avatar(c.driver, 'sm')}<div class="stack" style="gap:2px"><b>🚗 ${esc(nameOf(c.driver))}</b>${c.from ? `<span class="muted small">${esc('Leaving from: ' + c.from)}</span>` : ''}</div></div>
-          <span class="row" style="gap:6px">
-            ${inIt ? `<button class="btn sm ghost" type="button" data-action="car-leave" data-car="${esc(c.id)}">Get out</button>` : ''}
-            ${canHop ? `<button class="btn sm primary" type="button" data-action="car-join" data-car="${esc(c.id)}">${mine ? 'Switch to this car' : 'Hop in'}</button>` : ''}
-            ${m && (c.driver === m || leads(t)) ? `<button class="btn sm ghost danger" type="button" data-action="car-del" data-car="${esc(c.id)}">Remove car</button>` : ''}
-          </span>
-        </div>
-        <div class="seats">${c.riders.map(chip).join('')}${Array.from({ length: left }, () => '<span class="seat-free">Free seat</span>').join('')}</div>
-      </div>`;
-  }).join('');
-  const status = !coming.length ? '<p class="muted small">Once people say they’re coming, you’ll see here who still needs a ride.</p>'
-    : waiting.length ? `<p class="small"><span class="muted">Still without a ride:</span> ${waiting.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>`
-    : '<p class="small solved">✓ Transport is sorted. Everyone who’s coming has a way there.</p>';
-  return `
-      <section class="panel stack" id="transport">
-        <div class="spread"><div><p class="eyebrow step-tag">Step 2 · Getting there</p><h2>How we get to the cottage</h2></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
-        ${cottageHtml}
-        ${status}
-        <div class="cars">${carHtml || '<p class="muted">No cars offered yet. Got one? Offer it below.</p>'}</div>
-        ${own.length ? `<p class="small"><span class="muted">Getting there on their own:</span> ${own.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>` : ''}
-        ${!m ? '<p class="muted small">Tell us who you are (top right) to offer a car or hop in.</p>' : `
-        <div class="transport-me">
-          ${myCar ? '' : `<form id="car-form" class="row" style="align-items:end">
-            <label style="flex:0 0 120px">Free seats<select name="seats">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 3 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
-            <label style="flex:1 1 180px">Leaving from<input name="from" maxlength="40" placeholder="e.g. Brno, Praha"></label>
-            <button class="btn" type="submit">🚗 I have a car</button>
-          </form>`}
-          ${myCar ? '' : `<button class="btn sm ghost" type="button" data-action="own-way">${own.includes(m) ? 'Never mind, I need a ride' : 'I’ll get there on my own (train, bus…)'}</button>`}
-        </div>`}
-      </section>`;
-}
-
 function viewNext() {
   const plan = planning();
   const c = court();
@@ -651,7 +587,6 @@ function viewNext() {
       <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1>
         <p>Welcome to the planning room. It\u2019s empty for now, because the next trip hasn\u2019t been started yet. Once whoever wears the crown starts it, this is where we vote on dates, say if we\u2019re coming and work out how to get there.</p></section>
       ${handover()}
-      ${todoBlock('next')}
       <div class="empty">
         <div class="big">♛</div>
         <h3>${esc(nameOf(c.ruler))}, the stage is yours.</h3>
@@ -737,15 +672,14 @@ function viewNext() {
     <section class="hero">
       <p class="eyebrow">Next trip</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
-      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates and the cottage. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.</p>
-      ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
+      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates and the cottage. The rest of us vote and say if we’re coming. Below you’ll find the dates and the way to the cottage.</p>
+      ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button>${plan.start && daysUntil(plan.start) <= 0 ? `<button class="btn gold sm" type="button" data-action="wrap-up" data-trip="${plan.id}">♛ Back home? Wrap up &amp; crown the next ruler</button>` : ''}</div>` : ''}
     </section>
 
     ${overview}
-    ${todoBlock('next')}
 
     <section class="panel stack" id="dates">
-      <div class="spread"><div><p class="eyebrow step-tag">${plan.start ? 'Step 1 · Who’s coming' : 'Step 1 · Dates'}</p><h2>${plan.start ? 'The date is set. Are you coming?' : 'When can you come?'}</h2></div></div>
+      <div class="spread"><div><p class="eyebrow">${plan.start ? 'Who’s coming' : 'Dates'}</p><h2>${plan.start ? 'The date is set. Are you coming?' : 'When can you come?'}</h2></div></div>
       ${plan.start ? `<div class="date-set"><b>${esc(fmtRange(plan.start, plan.end))}</b><span class="muted">${esc(dayRange(plan.start, plan.end))}</span></div>` : ''}
       ${plan.start ? rsvpHtml : ''}
       ${plan.start && opts.length ? `<details class="poll-past"><summary>How we voted</summary><div class="poll">${optsHtml}</div></details>` : `
@@ -761,10 +695,10 @@ function viewNext() {
       </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
     </section>
 
-    ${transportPanel(plan, cottageHtml)}
-
-
-    ${rolesPanel(plan)}
+    <section class="panel stack" id="transport">
+      <div><p class="eyebrow">The cottage</p><h2>How to get there</h2></div>
+      ${cottageHtml}
+    </section>
 
   </div>`;
 }

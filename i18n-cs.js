@@ -229,7 +229,7 @@ const exact = {
   'On the day, tap “Navigate” and your phone takes you to the cottage.': 'V den odjezdu ťukni na „Navigovat“ a telefon tě dovede až k chatě.',
   'Wrap it up': 'Uzavři to',
   'Back home, press the button at the bottom to crown the next monarch and share photos.': 'Doma klikni na tlačítko dole, korunuj dalšího panovníka a nasdílej fotky.',
-  'The cottage': 'Chata',
+  'The cottage': 'Chata', 'Dates': 'Termín', 'How to get there': 'Jak se tam dostaneme',
   'Place not set yet': 'Místo zatím není',
   'Navigate in Google Maps ↗': 'Navigovat v Google Maps ↗',
   'Copy address': 'Kopírovat adresu',
@@ -471,7 +471,7 @@ const exact = {
   'Reminder copied. Paste it into the group chat.': 'Připomínka zkopírovaná. Vlož ji do skupiny.', 'Copy this reminder:': 'Zkopíruj si připomínku:',
   '✓ All done': '✓ Všechno hotovo',
   // ---- page welcomes (timeless: no names, they must stay true for every trip)
-  'Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates and the cottage. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.': 'Vítej v plánovací místnosti. Tady se rodí náš další společný víkend. Vede ho vždy ten, kdo právě nosí korunu, a rozhoduje o termínu i o chatě. My ostatní hlasujeme, dáváme vědět, jestli jedeme, a domlouváme se, jak se tam dostaneme. Všechno potřebné najdeš níž, krok za krokem.',
+  'Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates and the cottage. The rest of us vote and say if we’re coming. Below you’ll find the dates and the way to the cottage.': 'Vítej v plánovací místnosti. Tady se rodí náš další společný víkend. Vede ho vždy ten, kdo právě nosí korunu, a rozhoduje o termínu i o chatě. My ostatní hlasujeme a dáváme vědět, jestli jedeme. Níž najdeš termíny a cestu na chatu.',
   'Welcome to the planning room. It’s empty for now, because the next trip hasn’t been started yet. Once whoever wears the crown starts it, this is where we vote on dates, say if we’re coming and work out how to get there.': 'Vítej v plánovací místnosti. Zatím je tu prázdno, další výlet ještě nikdo nezaložil. Jakmile ho založí ten, kdo právě nosí korunu, budeme tu hlasovat o termínu, dávat vědět, kdo jede, a domlouvat dopravu.',
   'Welcome to the gang. We met at JAMU in 2016 and started out by getting through school together. Today we know each other’s lives and keep showing up for them. Here we all are, with our nicknames and how many trips each of us has made it to. Tap your own photo to change it.': 'Vítej v partě. Potkali jsme se na JAMU v roce 2016 a začalo to tím, že jsme spolu přežili školu. Dnes známe životy jeden druhého a pořád jsme u nich. Tady jsme všichni, i s přezdívkami a s tím, kolik výletů má kdo za sebou. Svou fotku změníš ťuknutím na ni.',
   'Welcome to the archive, our shared memory. Every trip we’ve taken has its own page here, with photos, stories, quotes and who came. Each trip’s king or queen writes its page, and anyone can add a story or a quote. Remember a trip that isn’t here yet? Add it.': 'Vítej v archivu, naší společné paměti. Každý náš výlet tu má svou stránku s fotkami, historkami, hláškami a s tím, kdo jel. Stránku píše král nebo královna daného výletu, historku nebo hlášku ale může přidat kdokoli. Pamatuješ si výlet, který tu ještě není? Přidej ho.',
