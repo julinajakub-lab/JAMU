@@ -35,6 +35,10 @@ function fmtRange(a, b) {
   if (s.getFullYear() === e.getFullYear()) return `${dm(s)} – ${fmtDate(b)}`;
   return `${fmtDate(a)} – ${fmtDate(b)}`;
 }
+function dayRange(a, b) {
+  const wd = d => parseDate(d)?.toLocaleDateString('cs-CZ', { weekday: 'long' }) || '';
+  return !b || a === b ? wd(a) : `${wd(a)} – ${wd(b)}`;
+}
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((d - t) / 864e5); }
 
 function avatar(id, size = '') {
@@ -110,11 +114,11 @@ function translateDOM(root) {
 let demo = null;
 function demoData() {
   if (demo) return demo;
-  try { demo = JSON.parse(ls.get('jamu-demo')); } catch { demo = null; }
+  try { demo = JSON.parse(ls.get('jamu-demo-v5')); } catch { demo = null; }
   if (!Array.isArray(demo)) { demo = seedDemo(); saveDemo(); }
   return demo;
 }
-function saveDemo() { ls.set('jamu-demo', JSON.stringify(demo)); }
+function saveDemo() { ls.set('jamu-demo-v5', JSON.stringify(demo)); }
 function seedDemo() {
   // Example content so the demo isn't empty. The real database starts empty.
   const now = new Date().toISOString();
@@ -123,11 +127,11 @@ function seedDemo() {
   const fri = (mo, d) => `${y + 1}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const o1 = uid(), o2 = uid(), o3 = uid();
   return [
-    { id: t, collection: 'trips', created_at: now, status: 'planning', title: 'Spring cottage weekend (example)', organiser: 'ladislav',
+    { id: t, collection: 'trips', created_at: now, status: 'planning', title: 'Spring cottage weekend (example)', organiser: 'julia',
       place: 'Chata u Lesa (example)', address: 'Hlubočky 123, 783 61 Hlubočky', notes: 'Bring: slippers, a towel, a dish to share.\nKeys are under the gnome.', rsvp: { ladislav: 'yes', julia: 'yes', jakub: 'yes', nikol: 'love', sylvie: 'maybe', michaela: 'yes' } },
-    { id: o1, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 17), end: fri(4, 19), votes: { ladislav: 'yes', julia: 'yes', jakub: 'maybe', nikol: 'yes', michaela: 'yes' } },
-    { id: o2, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 24), end: fri(4, 26), votes: { ladislav: 'yes', julia: 'no', jakub: 'yes', sylvie: 'yes', adam: 'yes', viktoria: 'yes' } },
-    { id: o3, collection: 'date_options', created_at: now, trip_id: t, start: fri(5, 8), end: fri(5, 10), votes: { ladislav: 'maybe', alzbeta: 'yes' } },
+    { id: o1, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 16), end: fri(4, 18), votes: { ladislav: 'yes', julia: 'yes', jakub: 'maybe', nikol: 'yes', michaela: 'yes' } },
+    { id: o2, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 23), end: fri(4, 25), votes: { ladislav: 'yes', julia: 'no', jakub: 'yes', sylvie: 'yes', adam: 'yes', viktoria: 'yes' } },
+    { id: o3, collection: 'date_options', created_at: now, trip_id: t, start: fri(5, 7), end: fri(5, 9), votes: { ladislav: 'maybe', alzbeta: 'yes' } },
     { id: uid(), collection: 'milestones', created_at: now, date: `${y - 1}-06-12`, who: ['michaela'], kind: 'baby', title: 'Míša’s baby is born (example)', label: 'First baby of the gang', note: 'Replace this example with the real date.' },
     ...((window.JAMU_RELICS || []).filter(r => r.prepared).map(r => ({ id: uid(), collection: 'trips', created_at: now, status: 'done', ...r.prepared }))),
     { id: uid(), collection: 'milestones', created_at: now, date: '2019-06-20', who: [], kind: 'school', title: 'We survive JAMU (example)', label: '', note: 'State exams done. Nobody cried. (Everybody cried.)' }
@@ -192,6 +196,10 @@ const openTrip = () => doneTrips().filter(isOpen).sort((a, b) => (b.done_at || '
    Whoever organised a trip writes its archive page: dates, place, photos and the story.
    Past monarchs add their old trips themselves; from now on every wrapped-up trip lands on its organiser. */
 const PAST_RULERS = window.JAMU_PAST_RULERS || [];
+const LAST_TRIP = window.JAMU_LAST_TRIP || {};
+// The handover note stays until the next crowning changes who reigns.
+const handover = () => LAST_TRIP.handover && court().ruler === LAST_TRIP.crowned
+  ? `<p class="handover" data-notr><span class="handover-mark" aria-hidden="true">✓</span>${esc(LAST_TRIP.handover)}</p>` : '';
 function chronicleGaps(t) {
   const gaps = [];
   if (!t.start) gaps.push('dates');
@@ -348,28 +356,14 @@ function shell(active, content) {
 }
 
 /* ---------------- views ---------------- */
-const FALLBACK_QUOTES = [
-  '“Iva is no longer with us.”',
-  '“Is Nikol here yet?” Nobody has asked this since 2017.',
-  '“If we survived SETKÁNÍ/ENCOUNTER, we can survive one weekend in a cottage.”',
-  '“Deadline? We don’t do deadlines anymore. We do dinner.”',
-  '“Whatever JAMU did to us, one cottage weekend undoes it.”',
-  '“Who brought the bottle opener?” — every trip, ever'
-];
-function allQuotes() {
-  const q = [];
-  S.trips.forEach(t => (t.quotes || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(s => q.push({ text: s, trip: t })));
-  return q;
-}
-
-function todoBlock() {
+// Personal to-dos, shown on the page they belong to: 'next' = the upcoming trip, 'archive' = the chronicle and past trips.
+function todoBlock(scope) {
   const m = me();
   const plan = planning();
-  const last = openTrip();
   const items = [];
   const add = (text, btn) => items.push(`<li class="todo"><span>${text}</span>${btn}</li>`);
   if (!m) add('First, tell the site who you are, so your votes and photos get your name.', `<button class="btn primary sm" type="button" data-action="switch-me">Pick my name</button>`);
-  if (m) {
+  if (m && scope === 'archive') {
     const mine = tripsBy(m);
     mine.filter(t => chronicleGaps(t).length).forEach(t =>
       add(`♛ You organised <b>${esc(t.title || 'Untitled trip')}</b>, so its archive page is yours to finish. Still missing: ${gapChips(t)}`,
@@ -378,30 +372,30 @@ function todoBlock() {
       const ready = preparedFor(m);
       if (ready) add(`♛ Your trip <b>${esc(ready.prepared.title)}</b> is written up from the old emails and the Drive. Check it, fix what’s wrong and add it to the archive.`,
         `<button class="btn primary sm" type="button" data-action="add-prepared" data-relic="${esc(ready.id)}">Check and add</button>`);
+      else if (LAST_TRIP.organiser === m && !mine.some(t => (t.start || '') >= LAST_TRIP.year)) add(`♛ ${LAST_TRIP.title} just ended and you led it, so its archive page is yours to write: when, where, the photos and the story. ${nameOf(LAST_TRIP.crowned)} already wears the crown.`,
+        `<button class="btn primary sm" type="button" data-action="add-my-trip">Write it up</button>`);
       else if (!mine.length) add('♛ You’ve worn the crown before, so the chronicle of your reign is yours to write. Add the trip you organised: when, where, the photos and what happened.',
         `<button class="btn primary sm" type="button" data-action="add-my-trip">Add my trip</button>`);
       else add('♛ Did you organise any other trip before this website existed? Add it too, or tell us that was all.',
         `<span class="row" style="gap:6px"><button class="btn sm" type="button" data-action="add-my-trip">Add another trip</button><button class="btn sm ghost" type="button" data-action="chronicle-done">That was all of them</button></span>`);
     }
   }
-  if (plan) {
+  if (scope === 'next' && plan) {
     const opts = S.options.filter(o => o.trip_id === plan.id);
-    if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<a class="btn primary sm" href="#next">Vote on dates</a>`);
-    if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<a class="btn primary sm" href="#next">Answer</a>`);
-  } else if (m && m === court().ruler) {
+    if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="dates">Vote on dates</button>`);
+    if (m && plan.start && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="dates">Answer</button>`);
+    if (m && noRide(plan).includes(m)) add(`How are you getting to <b>${esc(plan.title)}</b>? Offer your car or hop in with someone.`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="transport">Sort out my ride</button>`);
+    if (m && m === plan.organiser) {
+      const nextStep = crownSteps(plan).find(x => !x.done && !x.later);
+      if (nextStep) add(`♛ You’re leading <b>${esc(plan.title)}</b>. Next step:`, `<button class="btn primary sm" type="button" data-action="scroll" data-to="roles">${nextStep.text}</button>`);
+    }
+  } else if (scope === 'next' && m && m === court().ruler) {
     add('You’re the reigning monarch, so the next trip is yours to plan. Start with the cottage and a few date options.', `<button class="btn primary sm" type="button" data-action="new-plan">Plan the next trip</button>`);
   }
-  if (last) {
-    add(`Do you have nice photos from <b>${esc(last.title)}</b>? Share them with everyone.`, `<button class="btn primary sm" type="button" data-action="share-photos" data-trip="${last.id}">Share photos</button>`);
-    add(`Did you pay for something on <b>${esc(last.title)}</b>? Add it and the page works out who owes whom.`, `<button class="btn sm" type="button" data-action="add-exp" data-trip="${esc(last.id)}">Add an expense</button>`);
-    if (m && m === last.organiser) add(`♛ Once everyone has paid up for <b>${esc(last.title)}</b>, close the books and the trip moves to the archive.`, `<a class="btn sm" href="#after">Settle up</a>`);
-  } else if (!(m && PAST_RULERS.includes(m) && !chroniclesClosed()[m])) {
-    add('Remember one of our past trips? Add it to the archive, with photos and the best quotes.', `<button class="btn primary sm" type="button" data-action="add-past">Add a past trip</button>`);
-  }
-  add('Spotted a mistake, or have an idea for the site?', `<button class="btn sm" type="button" data-action="suggest">Suggest an edit</button>`);
+  if (!items.length) return '';
   return `
-    <section class="stack" style="gap:10px">
-      <div><p class="eyebrow">Start here</p><h2>What you can do right now</h2></div>
+    <section class="stack page-todos" style="gap:10px">
+      <div><p class="eyebrow">Just for you</p><h2>What you can do right now</h2></div>
       <ul class="todos">${items.join('')}</ul>
     </section>`;
 }
@@ -413,33 +407,6 @@ function viewHome() {
   const years = new Date().getFullYear() - 2019; // graduated through ENCOUNTER 2019
   const together = new Date().getFullYear() - 2016;
   const nikolCame = Math.max(1, done.filter(t => (t.attendees || []).includes('nikol')).length); // she came once, around 2021
-  const quotes = allQuotes();
-  const q = quotes.length ? quotes[Math.floor(Math.random() * quotes.length)] : { text: FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)] };
-  let nextBlock;
-  if (plan) {
-    const d = plan.start ? daysUntil(plan.start) : null;
-    nextBlock = `
-      <div class="panel stack">
-        <div class="spread">
-          <div class="stack" style="gap:4px">
-            <p class="eyebrow">Next trip</p>
-            <h2>${esc(plan.title || 'Untitled trip')}</h2>
-            <p class="muted">${plan.place ? esc(plan.place) + ' · ' : ''}organised by ♛ ${esc(nameOf(plan.organiser))}</p>
-          </div>
-          ${d !== null ? `<div style="text-align:right"><div class="countdown num">${d > 0 ? d : d === 0 ? 'Today' : '—'}</div><p class="muted small">${d > 0 ? (d === 1 ? 'day to go' : 'days to go') : d === 0 ? '' : 'already started'}</p></div>` : ''}
-        </div>
-        <p>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'The date is still being voted on. Have you voted yet?'}</p>
-        <div class="row"><a class="btn primary" href="#next">Open the trip plan</a></div>
-      </div>`;
-  } else {
-    nextBlock = `
-      <div class="empty">
-        <div class="big">🏕️</div>
-        <h3>No trip planned yet</h3>
-        <p class="muted">${esc(nameOf(c.ruler))}, your people are waiting.</p>
-        <a class="btn primary" href="#next">Start planning</a>
-      </div>`;
-  }
   return `
   <div class="stack-lg">
     <section class="hero">
@@ -448,8 +415,7 @@ function viewHome() {
       <p>Ten people who met studying theatre management at JAMU (plus one we adopted from JevTech). Twice a year we leave everyday life behind for a cottage in the woods, where we cook, walk and talk late into the night about our lives and the world.</p>
     </section>
 
-    <div class="home-intro">
-    <section class="letter">
+    <section class="letter home-letter">
       <p class="eyebrow">A letter to start with</p>
       <div class="letter-body">
         <p class="greeting">Hi, friends,</p>
@@ -467,21 +433,14 @@ function viewHome() {
       </div>
     </section>
 
-    ${todoBlock()}
+    <div class="quick-wrap">
+    ${handover()}
+    <a class="quick-next" href="#next">
+      <span class="crown" aria-hidden="true">♛</span>
+      <span>${esc(nameOf(plan ? plan.organiser : c.ruler))} leads the next trip</span>
+      <span class="quick-go">Details →</span>
+    </a>
     </div>
-
-    <section class="court" aria-label="The royal court">
-      <div class="throne reign">
-        ${avatar(c.ruler, 'lg')}
-        <div class="who"><span class="eyebrow"><span class="crown">♛</span> Reigning monarch</span><span class="name">${esc(member(c.ruler)?.name || '—')}</span><span class="muted small">${esc(member(c.ruler)?.nick || '')} · plans the next trip</span></div>
-      </div>
-      <div class="throne">
-        ${c.heir ? avatar(c.heir, 'lg') : '<span class="av lg" style="--h:0">?</span>'}
-        <div class="who"><span class="eyebrow">Heir to the throne</span><span class="name">${esc(member(c.heir)?.name || 'Not decided')}</span><span class="muted small">${c.heir ? 'to be crowned at the end of the next trip' : 'to be decided at the next trip'}</span></div>
-      </div>
-    </section>
-
-    ${nextBlock}
 
     <section>
       <div class="section-head"><h2>By the numbers</h2></div>
@@ -492,19 +451,62 @@ function viewHome() {
         <div class="kpi"><b>${nikolCame}×</b><span class="muted small">Nikol arrived. About five years ago, and nobody remembers which trip.</span></div>
       </div>
     </section>
-
-    <section class="stack quote-block" style="gap:8px">
-      <p class="eyebrow">From our memories</p>
-      <p class="quote">${esc(q.text)}</p>
-      ${q.trip ? `<p class="muted small">from <a href="#trip-${esc(q.trip.id)}">${esc(q.trip.title)}</a></p>` : ''}
-    </section>
   </div>`;
+}
+
+/* ---------------- the gang's shared tasks ----------------
+   Whatever the whole gang owes right now, shown publicly on the Gang page: who's done, who isn't.
+   Each task: { id, title, href, who: [ids it applies to], done: id => bool }. */
+function groupTasks() {
+  const plan = planning();
+  const all = MEMBERS.map(m => m.id);
+  const list = [];
+  if (plan && !plan.start) {
+    const opts = S.options.filter(o => o.trip_id === plan.id);
+    if (opts.length) list.push({ id: 'vote', title: 'Vote on the dates for the next trip', href: '#next', who: all, done: id => opts.some(o => (o.votes || {})[id]) });
+  }
+  if (plan && plan.start) {
+    list.push({ id: 'rsvp', title: 'Say if you’re coming on the next trip', href: '#next', who: all, done: id => !!(plan.rsvp || {})[id] });
+    const going = goingTo(plan);
+    if (going.length) list.push({ id: 'ride', title: 'Sort out how you get to the cottage', href: '#next', who: going, done: id => hasRide(plan, id) });
+  }
+  const owers = MEMBERS.filter(m => PAST_RULERS.includes(m.id) || tripsBy(m.id).length).map(m => m.id);
+  if (owers.length) list.push({ id: 'chronicle', title: 'Write the archive pages of the trips you led', href: '#archive', who: owers, done: id => chronicleState(id) === 'done' });
+  return list.map(t => ({ ...t, ok: t.who.filter(t.done), missing: t.who.filter(id => !t.done(id)) }));
+}
+function taskBoard(tasks) {
+  if (!tasks.length) return '';
+  const row = t => {
+    const pct = Math.round(t.ok.length / t.who.length * 100);
+    const full = !t.missing.length;
+    return `
+      <div class="gtask${full ? ' full' : ''}">
+        <div class="gtask-head">
+          <a class="gtask-title" href="${t.href}">${t.title}</a>
+          <span class="num small ${full ? 'solved' : 'muted'}">${full ? '✓ Everyone’s done' : `${t.ok.length} of ${t.who.length} done`}</span>
+        </div>
+        <div class="poll-bar" aria-hidden="true"><span class="yes" style="width:${pct}%"></span></div>
+        <div class="gtask-who">
+          ${t.missing.length ? `<span class="small"><span class="muted">Still missing:</span> ${t.missing.map(id => `<span class="chip no">${esc(nameOf(id))}</span>`).join(' ')}</span>` : ''}
+          ${t.ok.length ? `<span class="av-row" title="Done">${t.ok.map(id => avatar(id, 'xs')).join('')}</span>` : ''}
+        </div>
+        ${t.missing.length ? `<div><button class="btn sm ghost" type="button" data-action="nudge" data-task="${t.id}">Copy a reminder for the group chat</button></div>` : ''}
+      </div>`;
+  };
+  return `
+    <section class="panel stack" id="tasks">
+      <div><p class="eyebrow">For all of us</p><h2>What the gang owes right now</h2><p class="muted small">Everything we all have to do, in plain sight. Done ones go green; the names still missing stay here until they do it.</p></div>
+      <div class="gtasks">${tasks.map(row).join('')}</div>
+    </section>`;
 }
 
 function viewGang() {
   const c = court();
   const done = doneTrips();
+  const tasks = groupTasks();
   const cards = MEMBERS.map(m => {
+    const owes = tasks.filter(t => t.missing.includes(m.id)).length;
+    const status = tasks.some(t => t.who.includes(m.id)) ? `<p class="owes ${owes ? 'open' : 'clear'} small">${owes ? `${owes} ${owes === 1 ? 'task waiting' : 'tasks waiting'}` : '✓ All done'}</p>` : '';
     const trips = done.filter(t => (t.attendees || []).includes(m.id)).length;
     const crowns = done.filter(t => t.organiser === m.id).length;
     const badge = m.id === c.ruler ? '<p class="member-tag crown">♛ Reigning</p>' : m.id === c.heir ? '<p class="member-tag">Heir to the throne</p>' : '';
@@ -522,6 +524,7 @@ function viewGang() {
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
           ${(m.links || []).length ? `<ul class="member-links">${m.links.map(l => `<li><a target="_blank" rel="noopener" href="${esc(l.url)}">${esc(l.title)} ↗</a></li>`).join('')}</ul>` : ''}
           ${m.honour ? `<p class="honour small"><span class="crown">★</span> <span>${esc(m.honour.text)}</span>${m.honour.url ? ` <a target="_blank" rel="noopener" href="${esc(m.honour.url)}"><span>${esc(m.honour.link || 'Open')}</span> ↗</a>` : ''}</p>` : ''}
+          ${status}
           <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>arrivals: pending</span>' : ''}</div>
         </div>
       </article>`;
@@ -531,8 +534,9 @@ function viewGang() {
     <section class="hero">
       <p class="eyebrow">10 active members · 1 no longer with us</p>
       <h1>The Gang</h1>
-      <p>Met at JAMU in 2016. It started with getting through school together. Today we know each other’s lives, and we keep showing up for them.</p>
+      <p>Welcome to the gang. We met at JAMU in 2016 and started out by getting through school together. Today we know each other’s lives and keep showing up for them. Here we all are, with our nicknames and how many trips each of us has made it to. Tap your own photo to change it.</p>
     </section>
+    ${taskBoard(tasks)}
     <section class="gang">
       ${cards}
       <article class="panel ghost-card">
@@ -547,17 +551,112 @@ function viewGang() {
 const ANSWERS = [['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No']];
 const RSVP = [['yes', 'Coming'], ['maybe', 'Maybe'], ['no', 'Can’t'], ['love', '💌 Sends love']];
 
+/* ---------------- who does what while a trip is being prepared ----------------
+   The king or queen runs the preparations; everyone else votes, answers for themselves and sorts out their ride.
+   Transport lives on the planning trip: cars: [{ id, driver, seats, from, riders: [] }] and own: [ids getting there on their own]. */
+// Rights: the trip's king or queen runs the planning; everyone else votes, answers for themselves and sorts out transport.
+// Who you are is picked on this device (top right), so this keeps honest people in their lane rather than locking anything.
+const leads = t => !!t && !!me() && me() === t.organiser;
+const onlyLeader = t => toast(`Only ${nameOf(t.organiser)} can do that. ♛`);
+const goingTo = t => MEMBERS.filter(m => ['yes', 'maybe'].includes((t.rsvp || {})[m.id])).map(m => m.id);
+const carsOf = t => (t.cars || []).map(c => ({ ...c, riders: c.riders || [] }));
+const hasRide = (t, id) => (t.own || []).includes(id) || carsOf(t).some(c => c.driver === id || c.riders.includes(id));
+const noRide = t => goingTo(t).filter(id => !hasRide(t, id));
+function crownSteps(t) {
+  const opts = S.options.filter(o => o.trip_id === t.id);
+  return [
+    { text: 'Propose a few weekends to vote on', done: !!(opts.length || t.start) },
+    { text: 'Pick the final date', done: !!t.start },
+    { text: 'Book the cottage and add the address', done: !!t.address },
+    { text: 'Write what to bring and how to get in under “Good to know”', done: !!(t.notes || '').trim() },
+    { text: 'Make sure everyone coming has a ride', done: goingTo(t).length > 0 && !noRide(t).length },
+    { text: 'After the trip: crown the heir and close the books', later: true }
+  ];
+}
+function stepRow(s) {
+  const state = s.later ? 'later' : s.done || (s.missing && !s.missing.length) ? 'done' : 'open';
+  const mark = state === 'done' ? '✓' : state === 'later' ? '·' : '';
+  const who = s.wait ? `<span class="muted small">${s.wait}</span>`
+    : s.missing && s.missing.length ? `<span class="small"><span class="muted">Still waiting for:</span> ${s.missing.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</span>`
+    : s.missing ? '<span class="muted small">Everyone’s done.</span>' : '';
+  return `<li class="duty ${state}"><span class="tick" aria-hidden="true">${mark}</span><span class="stack" style="gap:4px"><span>${s.text}</span>${who}</span></li>`;
+}
+function rolesPanel(t) {
+  const lead = leads(t);
+  const steps = crownSteps(t).map(stepRow).join('');
+  return `
+    <section class="panel stack duties crown-duties" id="roles">
+      <div class="spread">
+        <div><p class="eyebrow"><span class="crown">♛</span> The king or queen’s list</p><h2>${esc(nameOf(t.organiser))} takes care of this</h2><p class="muted small">The rest of us just follow the four steps above. If something’s unclear, ask the crown.</p></div>
+      </div>
+      <ul class="duty-list">${steps}</ul>
+      ${lead ? `<div class="row"><button class="btn gold" type="button" data-action="wrap-up" data-trip="${t.id}">♛ Back home? Wrap up &amp; crown the next ruler</button></div>` : ''}
+    </section>`;
+}
+
+function transportPanel(t, cottageHtml = '') {
+  const m = me();
+  const cars = carsOf(t);
+  const own = t.own || [];
+  const coming = goingTo(t);
+  const waiting = noRide(t);
+  const free = cars.reduce((n, c) => n + Math.max(0, (c.seats || 0) - c.riders.length), 0);
+  const myCar = m && cars.find(c => c.driver === m);
+  const mine = m && (myCar || cars.some(c => c.riders.includes(m)) || own.includes(m));
+  const chip = id => `<span class="person-chip">${avatar(id, 'xs')}${esc(nameOf(id))}</span>`;
+  const carHtml = cars.map(c => {
+    const left = Math.max(0, (c.seats || 0) - c.riders.length);
+    const inIt = m && c.riders.includes(m);
+    const canHop = m && !inIt && c.driver !== m && left > 0;
+    return `
+      <div class="car">
+        <div class="spread">
+          <div class="row" style="gap:10px">${avatar(c.driver, 'sm')}<div class="stack" style="gap:2px"><b>🚗 ${esc(nameOf(c.driver))}</b>${c.from ? `<span class="muted small">${esc('Leaving from: ' + c.from)}</span>` : ''}</div></div>
+          <span class="row" style="gap:6px">
+            ${inIt ? `<button class="btn sm ghost" type="button" data-action="car-leave" data-car="${esc(c.id)}">Get out</button>` : ''}
+            ${canHop ? `<button class="btn sm primary" type="button" data-action="car-join" data-car="${esc(c.id)}">${mine ? 'Switch to this car' : 'Hop in'}</button>` : ''}
+            ${m && (c.driver === m || leads(t)) ? `<button class="btn sm ghost danger" type="button" data-action="car-del" data-car="${esc(c.id)}">Remove car</button>` : ''}
+          </span>
+        </div>
+        <div class="seats">${c.riders.map(chip).join('')}${Array.from({ length: left }, () => '<span class="seat-free">Free seat</span>').join('')}</div>
+      </div>`;
+  }).join('');
+  const status = !coming.length ? '<p class="muted small">Once people say they’re coming, you’ll see here who still needs a ride.</p>'
+    : waiting.length ? `<p class="small"><span class="muted">Still without a ride:</span> ${waiting.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>`
+    : '<p class="small solved">✓ Transport is sorted. Everyone who’s coming has a way there.</p>';
+  return `
+      <section class="panel stack" id="transport">
+        <div class="spread"><div><p class="eyebrow step-tag">Step 3 · Getting there</p><h2>How we get to the cottage</h2></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
+        ${cottageHtml}
+        ${status}
+        <div class="cars">${carHtml || '<p class="muted">No cars offered yet. Got one? Offer it below.</p>'}</div>
+        ${own.length ? `<p class="small"><span class="muted">Getting there on their own:</span> ${own.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>` : ''}
+        ${!m ? '<p class="muted small">Tell us who you are (top right) to offer a car or hop in.</p>' : `
+        <div class="transport-me">
+          ${myCar ? '' : `<form id="car-form" class="row" style="align-items:end">
+            <label style="flex:0 0 120px">Free seats<select name="seats">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 3 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+            <label style="flex:1 1 180px">Leaving from<input name="from" maxlength="40" placeholder="e.g. Brno, Praha"></label>
+            <button class="btn" type="submit">🚗 I have a car</button>
+          </form>`}
+          ${myCar ? '' : `<button class="btn sm ghost" type="button" data-action="own-way">${own.includes(m) ? 'Never mind, I need a ride' : 'I’ll get there on my own (train, bus…)'}</button>`}
+        </div>`}
+      </section>`;
+}
+
 function viewNext() {
   const plan = planning();
   const c = court();
   if (!plan) return `
     <div class="stack-lg">
-      <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1></section>
+      <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1>
+        <p>Welcome to the planning room. It\u2019s empty for now, because the next trip hasn\u2019t been started yet. Once whoever wears the crown starts it, this is where we vote on dates, say if we\u2019re coming and work out how to get there.</p></section>
+      ${handover()}
+      ${todoBlock('next')}
       <div class="empty">
         <div class="big">♛</div>
         <h3>${esc(nameOf(c.ruler))}, the stage is yours.</h3>
         <p class="muted">Start a plan: add the cottage, then propose dates for everyone to vote on.</p>
-        <button class="btn primary" type="button" data-action="new-plan">Start planning the next trip</button>
+        ${me() === c.ruler ? '<button class="btn primary" type="button" data-action="new-plan">Start planning the next trip</button>' : `<p class="muted small">Only ${esc(nameOf(c.ruler))} can start it. Nudge them.</p>`}
       </div>
     </div>`;
 
@@ -565,25 +664,33 @@ function viewNext() {
   const score = o => Object.values(o.votes || {}).reduce((s, v) => s + (v === 'yes' ? 1 : v === 'maybe' ? .5 : 0), 0);
   const best = opts.length > 1 ? opts.reduce((a, b) => score(b) > score(a) ? b : a) : null;
   const meId = me();
+  const lead = leads(plan);
   const addr = plan.address || '';
+  const voted = id => opts.some(o => (o.votes || {})[id]);
+  const notVoted = MEMBERS.filter(m => !voted(m.id)).map(m => m.id);
   const optsHtml = opts.map(o => {
     const v = o.votes || {};
     const chosen = plan.start === o.start && plan.end === o.end;
-    const counts = { yes: 0, maybe: 0, no: 0 };
-    Object.values(v).forEach(x => { if (counts[x] !== undefined) counts[x]++; });
+    const isBest = best && best.id === o.id && score(o) > 0;
+    const ids = k => Object.keys(v).filter(id => v[id] === k);
+    const yes = ids('yes'), maybe = ids('maybe'), no = ids('no');
+    const pct = n => Math.round(n / MEMBERS.length * 100);
     return `
-      <div class="opt ${best && best.id === o.id && score(o) > 0 ? 'best' : ''} ${chosen ? 'chosen' : ''}">
-        <div class="spread">
-          <span class="opt-date">${esc(fmtRange(o.start, o.end))}${chosen ? ' ✅' : ''}${best && best.id === o.id && score(o) > 0 ? ' <span class="best-tag">Most votes</span>' : ''}</span>
-          <span class="row small num"><span class="chip yes">✓ ${counts.yes}</span><span class="chip maybe">? ${counts.maybe}</span><span class="chip no">✕ ${counts.no}</span></span>
+      <div class="poll-row${isBest ? ' best' : ''}${chosen ? ' chosen' : ''}">
+        <div class="poll-date">
+          <b>${esc(fmtRange(o.start, o.end))}</b>
+          <span class="muted small">${esc(dayRange(o.start, o.end))}${chosen ? ' · <span class="poll-flag">Chosen</span>' : isBest ? ' · <span class="poll-flag">Most votes</span>' : ''}</span>
         </div>
-        <div class="row">${Object.entries(v).map(([id, a]) => `<span class="chip ${a}">${esc(nameOf(id))}</span>`).join('') || '<span class="muted small">No votes yet.</span>'}</div>
-        <div class="spread">
-          ${meId ? `<span class="row small"><span class="muted">${esc(nameOf(meId))}:</span><span class="seg">${ANSWERS.map(([k, l]) => `<button type="button" class="${k} ${v[meId] === k ? 'on' : ''}" data-action="vote" data-opt="${o.id}" data-val="${k}">${l}</button>`).join('')}</span></span>` : '<span></span>'}
-          <span class="row">
-            ${chosen ? '' : `<button class="btn sm" type="button" data-action="choose-date" data-opt="${o.id}">Pick this date</button>`}
-            <button class="btn sm ghost danger" type="button" data-action="del-opt" data-opt="${o.id}" aria-label="Remove this date">Remove</button>
-          </span>
+        <div class="poll-result">
+          <div class="poll-bar" aria-hidden="true"><span class="yes" style="width:${pct(yes.length)}%"></span><span class="maybe" style="width:${pct(maybe.length)}%"></span></div>
+          <div class="poll-voters">
+            ${yes.map(id => `<span class="pv yes" title="${esc(nameOf(id))}">${avatar(id, 'xs')}</span>`).join('')}${maybe.map(id => `<span class="pv maybe" title="${esc(nameOf(id))}">${avatar(id, 'xs')}</span>`).join('')}
+            <span class="muted small num">${yes.length} yes${maybe.length ? ` · ${maybe.length} maybe` : ''}${no.length ? ` · ${no.length} no` : ''}</span>
+          </div>
+        </div>
+        <div class="poll-act">
+          ${meId ? `<span class="seg">${ANSWERS.map(([k, l]) => `<button type="button" class="${k} ${v[meId] === k ? 'on' : ''}" data-action="vote" data-opt="${o.id}" data-val="${k}">${l}</button>`).join('')}</span>` : ''}
+          ${lead ? `<span class="row" style="gap:4px">${chosen ? '' : `<button class="btn sm" type="button" data-action="choose-date" data-opt="${o.id}">Pick</button>`}<button class="btn sm ghost danger icon-btn" type="button" data-action="del-opt" data-opt="${o.id}" aria-label="Remove this date" title="Remove this date">✕</button></span>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -592,65 +699,80 @@ function viewNext() {
   const tally = { yes: 0, maybe: 0, no: 0, love: 0 };
   Object.values(rsvp).forEach(x => { if (tally[x] !== undefined) tally[x]++; });
 
+  const coming = MEMBERS.filter(m => rsvp[m.id] === 'yes').map(m => m.id);
+  const face = id => `<span class="person-chip">${avatar(id, 'xs')}${esc(nameOf(id))}</span>`;
+  const groups = [['yes', 'Coming'], ['maybe', 'Maybe'], ['love', '💌 Sends love'], ['no', 'Can’t make it']]
+    .map(([k, l]) => [l, MEMBERS.filter(m => rsvp[m.id] === k).map(m => m.id)])
+    .concat([['Haven’t answered yet', MEMBERS.filter(m => !rsvp[m.id]).map(m => m.id)]])
+    .filter(([, ids]) => ids.length);
+  const cottageHtml = `
+      <div class="trip-place">
+        <div class="stack" style="gap:2px;min-width:0">
+          <b>${esc(plan.place || 'Place not set yet')}</b>
+          ${addr ? `<span class="muted small addr-line">${esc(addr)}</span>` : `<span class="muted small">${lead ? 'No address yet.' : `No address yet. ${esc(nameOf(plan.organiser))} adds it once the cottage is booked.`}</span>`}
+        </div>
+        <span class="row" style="gap:6px">
+          ${addr ? `<a class="btn primary sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate ↗</a>
+          <a class="btn sm" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
+          <button class="btn sm ghost" type="button" data-action="copy" data-text="${esc(addr)}">Copy</button>` : lead ? `<button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button>` : ''}
+        </span>
+      </div>
+      ${plan.notes ? `<p class="small notes-line"><span class="eyebrow">Good to know</span> ${esc(plan.notes)}</p>` : ''}`;
+  const rsvpHtml = `
+      <div class="rsvp-box" id="rsvp">
+        ${meId ? `<div class="rsvp-me"><b>${esc(`Are you coming, ${nameOf(meId)}?`)}</b><span class="seg">${RSVP.map(([k, l]) => `<button type="button" class="${k} ${rsvp[meId] === k ? 'on' : ''}" data-action="rsvp" data-who="${meId}" data-val="${k}">${l}</button>`).join('')}</span></div>` : '<p class="muted small">Tell us who you are (top right) to answer.</p>'}
+        <div class="rsvp-groups">${groups.map(([l, ids]) => `<div class="rsvp-group"><span class="eyebrow">${esc(`${l} · ${ids.length}`)}</span><div class="row" style="gap:6px">${ids.map(face).join('')}</div></div>`).join('')}</div>
+        <p class="muted small">Everyone answers only for themselves. (Nikol, we’ll believe it when we see you.)</p>
+      </div>`;
+  const overview = `
+    <section class="glance" aria-label="The trip at a glance">
+      <div class="glance-cell"><span class="eyebrow">When</span><b>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Still voting'}</b><span class="muted small">${plan.start ? (() => { const d = daysUntil(plan.start); return d > 1 ? `in ${d} days` : d === 1 ? 'tomorrow' : d === 0 ? 'today!' : 'under way'; })() : `${opts.length} ${opts.length === 1 ? 'weekend' : 'weekends'} in the vote`}</span></div>
+      <div class="glance-cell"><span class="eyebrow">Where</span><b>${esc(plan.place || 'Not decided yet')}</b><span class="muted small">${addr ? 'Address below' : 'Address comes later'}</span></div>
+      <div class="glance-cell"><span class="eyebrow"><span class="crown">♛</span> Leads it</span><span class="row" style="gap:8px">${avatar(plan.organiser, 'xs')}<b>${esc(nameOf(plan.organiser))}</b></span><span class="muted small">${esc(member(plan.organiser)?.nick || '')}</span></div>
+      <div class="glance-cell"><span class="eyebrow">Who’s coming</span><b class="num">${tally.yes}${tally.maybe ? ` <span class="muted small">+ ${tally.maybe} maybe</span>` : ''}</b><span class="av-row">${coming.map(id => avatar(id, 'xs')).join('')}</span></div>
+    </section>`;
+
   return `
   <div class="stack-lg">
     <section class="hero">
-      <p class="eyebrow">Next trip · organised by ♛ ${esc(nameOf(plan.organiser))}</p>
+      <p class="eyebrow">Next trip</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
-      <p>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Date not decided yet. Vote below.'}</p>
-      <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>
+      <p>Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates, the cottage and the address. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.</p>
+      ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
+
+    ${overview}
+    ${handover()}
+    ${todoBlock('next')}
 
     <ol class="howto" aria-label="How this page works">
       <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
-      <li><b>Say if you\u2019re coming</b><span>One tap next to your name. You can change it any time.</span></li>
-      <li><b>Get there</b><span>On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
-      <li><b>Wrap it up</b><span>Back home, press the button at the bottom to crown the next monarch and share photos.</span></li>
+      <li><b>Say if you’re coming</b><span>Once the date is picked, answer with one tap. You can change it any time.</span></li>
+      <li><b>Get there</b><span>Offer your car or hop in with someone. On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
     </ol>
 
-    <div class="two-col">
-      <section class="panel stack">
-        <p class="eyebrow">The cottage</p>
-        <h2>${esc(plan.place || 'Place not set yet')}</h2>
-        ${addr ? `<p class="addr">${esc(addr)}</p>
-          <div class="row">
-            <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate in Google Maps ↗</a>
-            <a class="btn" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
-            <button class="btn" type="button" data-action="copy" data-text="${esc(addr)}">Copy address</button>
-          </div>` : `<p class="muted">No address yet. <button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button></p>`}
-        ${plan.notes ? `<div class="stack" style="gap:4px"><p class="eyebrow">Good to know</p><p class="story">${esc(plan.notes)}</p></div>` : ''}
-      </section>
-
-      <section class="panel stack">
-        <div class="spread"><div><p class="eyebrow">Date voting</p><h2>When can you come?</h2></div></div>
+    <section class="panel stack" id="dates">
+      <div class="spread"><div><p class="eyebrow step-tag">${plan.start ? 'Step 2 · Who’s coming' : 'Step 1 · Dates'}</p><h2>${plan.start ? 'The date is set. Are you coming?' : 'When can you come?'}</h2></div></div>
+      ${plan.start ? `<div class="date-set"><b>${esc(fmtRange(plan.start, plan.end))}</b><span class="muted">${esc(dayRange(plan.start, plan.end))}</span></div>` : ''}
+      ${plan.start ? rsvpHtml : ''}
+      ${plan.start && opts.length ? `<details class="poll-past"><summary>How we voted</summary><div class="poll">${optsHtml}</div></details>` : `
         ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
-        <div>${optsHtml || '<p class="muted">No dates proposed yet. Add the first option below.</p>'}</div>
-        <form id="opt-form" class="grid2" style="align-items:end">
-          <label>From<input type="date" name="start" id="opt-start" required></label>
-          <label>To<input type="date" name="end" id="opt-end"></label>
-          <button class="btn" type="submit">Propose these dates</button>
-        </form>
-      </section>
-    </div>
-
-    <section class="panel stack">
-      <div class="spread">
-        <div><p class="eyebrow">Who’s coming</p><h2 class="num">${tally.yes} coming · ${tally.maybe} maybe</h2></div>
-        <p class="muted small">Answer for yourself. (Nikol, we’ll believe it when we see you.)</p>
-      </div>
-      <div>
-        ${MEMBERS.map(m => `
-          <div class="rsvp">
-            <div class="person">${avatar(m.id, 'xs')}<span><b>${esc(m.short)}</b> <span class="muted small">${esc(m.nick)}</span></span></div>
-            <span class="seg">${RSVP.map(([k, l]) => `<button type="button" class="${k} ${rsvp[m.id] === k ? 'on' : ''}" data-action="rsvp" data-who="${m.id}" data-val="${k}">${l}</button>`).join('')}</span>
-          </div>`).join('')}
-      </div>
+        ${opts.length ? `<div class="poll">${optsHtml}</div>` : `<p class="muted">${lead ? 'No weekends yet. Propose the first one below.' : `${esc(nameOf(plan.organiser))} hasn’t proposed any weekends yet.`}</p>`}
+        ${opts.length && notVoted.length ? `<p class="small"><span class="muted">Haven’t voted yet:</span> ${notVoted.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>` : ''}`}
+      ${plan.start ? '' : lead ? `<form id="opt-form" class="propose">
+        <span class="propose-label">Propose a weekend</span>
+        <label><span class="sr">From</span><input type="date" name="start" id="opt-start" required aria-label="From"></label>
+        <span class="muted" aria-hidden="true">–</span>
+        <label><span class="sr">To</span><input type="date" name="end" id="opt-end" aria-label="To"></label>
+        <button class="btn" type="submit">+ Add</button>
+      </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
     </section>
 
-    <section class="panel spread">
-      <div class="stack" style="gap:4px"><h3>Back home already?</h3><p class="muted small">Wrap up the trip: confirm who came, crown the next monarch, then add photos and expenses.</p></div>
-      <button class="btn gold" type="button" data-action="wrap-up" data-trip="${plan.id}">♛ Wrap up &amp; crown the next ruler</button>
-    </section>
+    ${transportPanel(plan, cottageHtml)}
+
+
+    ${rolesPanel(plan)}
+
   </div>`;
 }
 
@@ -660,9 +782,10 @@ function viewArchive() {
   <div class="stack-lg">
     <section class="hero">
       <p class="eyebrow">Every weekend we’ve shared</p><h1>The Archive</h1>
-      <p>Every trip we\u2019ve taken. Open one to see its photos, stories and who came. Remember a trip that isn\u2019t here yet? Add it.</p>
+      <p>Welcome to the archive, our shared memory. Every trip we\u2019ve taken has its own page here, with photos, stories, quotes and who came. Each trip\u2019s king or queen writes its page, and anyone can add a story or a quote. Remember a trip that isn\u2019t here yet? Add it.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-past">+ Add a past trip</button></div>
     </section>
+    ${todoBlock('archive')}
     ${done.length ? `<div class="table-wrap"><table class="sheet">
       <thead><tr><th>Date</th><th>Trip</th><th>Organiser</th><th>Who came</th><th>Photos</th></tr></thead>
       <tbody>${done.map((t, i) => tripRow(t)).join('')}</tbody></table></div>` : `
@@ -926,7 +1049,7 @@ function viewTimeline() {
     <section class="hero">
       <p class="eyebrow">Our life, together</p>
       <h1>Timeline</h1>
-      <p>From surviving JAMU to babies, weddings and new homes. Trips from the archive appear here automatically.</p>
+      <p>Welcome to our timeline. It isn\u2019t only trips, but everything that happened to us along the way: surviving JAMU, new jobs and homes, weddings and babies. When something big happens in your life, add it here so we all remember. Trips from the archive appear on their own.</p>
       <div class="row"><button class="btn primary" type="button" data-action="add-ms">+ Add a milestone</button></div>
     </section>
     <ol class="timeline">${rows}</ol>
@@ -947,7 +1070,7 @@ function viewIdeas() {
   <div class="stack-lg">
     <section class="hero">
       <p class="eyebrow">Make it better</p><h1>Suggestions</h1>
-      <p>Ideas and fixes from the gang. Mark them done once they’re in. (Feedback here is kinder than at a JAMU evaluation, promise.)</p>
+      <p>Welcome to the suggestion box. This site is ours, so anyone can propose a fix or an idea, and mark it done once it\u2019s in. (Feedback here is kinder than at a JAMU evaluation, promise.)</p>
       <div class="row"><button class="btn primary" type="button" data-action="suggest">+ New suggestion</button></div>
     </section>
     ${list.length ? `<div class="stack">${list.map(s => `
@@ -982,6 +1105,7 @@ function viewTrip(t, { after = false } = {}) {
     <section class="hero">
       <p class="eyebrow">${after ? 'Just got back from' : 'From the archive'}</p>
       <h1>${esc(t.title || 'Untitled trip')}</h1>
+      ${after ? '<p>Welcome back home. Share your photos, write down who paid for what, and the page works out who owes whom. Once everything is paid, the trip\u2019s king or queen closes the books and the trip moves to the archive.</p>' : ''}
       <p>${esc(fmtRange(t.start, t.end))}${t.place ? ' · ' + esc(t.place) : ''}</p>
       <p class="small"><span class="crown">♛</span> Organised by <b>${esc(member(t.organiser)?.name || '—')}</b>${t.crowned ? ` · crowned at the end: <b>${esc(member(t.crowned)?.name)}</b>` : ''}</p>
       <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${t.id}">Edit</button>${after ? `<a class="btn sm ghost" href="#trip-${esc(t.id)}">Permalink</a>` : ''}</div>
@@ -1032,7 +1156,7 @@ function viewTrip(t, { after = false } = {}) {
 
     ${relicsSection(t)}
 
-    <section class="row"><button class="btn sm ghost danger" type="button" data-action="del-trip" data-trip="${t.id}">Delete this trip</button></section>
+    ${me() === t.organiser ? `<section class="row"><button class="btn sm ghost danger" type="button" data-action="del-trip" data-trip="${t.id}">Delete this trip</button></section>` : ''}
   </div>`;
 }
 
@@ -1130,7 +1254,8 @@ function viewAfter() {
   const t = openTrip();
   if (!t) return `
     <div class="stack-lg">
-      <section class="hero"><p class="eyebrow">After the trip</p><h1>Nothing to settle yet</h1></section>
+      <section class="hero"><p class="eyebrow">After the trip</p><h1>Nothing to settle yet</h1>
+        <p>Welcome back home. This page is for the days right after a trip: share your photos, write down who paid for what, and the page works out who owes whom. Once everything is paid, the trip\u2019s king or queen closes the books and the trip moves to the archive.</p></section>
       <div class="empty">
         <div class="big">🧾</div>
         <h3>No trip waiting to be settled</h3>
@@ -1616,6 +1741,14 @@ document.addEventListener('click', async e => {
   const trip = id => S.trips.find(t => t.id === id);
   const opt = id => S.options.find(o => o.id === id);
 
+  if (a === 'nudge') {
+    const t = groupTasks().find(x => x.id === b.dataset.task); if (!t) return;
+    const url = location.href.split('#')[0] + t.href;
+    const text = `${tr(t.title)}. ${tr('Still missing:')} ${t.missing.map(nameOf).join(', ')}. 👉 ${url}`;
+    try { await navigator.clipboard.writeText(text); toast('Reminder copied. Paste it into the group chat.'); }
+    catch { window.prompt(tr('Copy this reminder:'), text); }
+    return;
+  }
   if (a === 'switch-me') return pickMe(true);
   if (a === 'logout') return logout();
   if (a === 'copy') {
@@ -1624,6 +1757,7 @@ document.addEventListener('click', async e => {
     return;
   }
   if (a === 'new-plan') {
+    if (me() !== court().ruler) return toast(`Only ${nameOf(court().ruler)} can do that. ♛`);
     const cfg = tripSheet(null, 'plan');
     return openSheet({ ...cfg, onSave: async v => {
       const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'planning', rsvp: {} });
@@ -1633,7 +1767,8 @@ document.addEventListener('click', async e => {
   }
   if (a === 'add-past' || a === 'add-my-trip') {
     const m = me(); if (a === 'add-my-trip' && !m) return pickMe(true);
-    const cfg = tripSheet(null, 'past', a === 'add-my-trip' ? { organiser: m } : {});
+    const fresh = a === 'add-my-trip' && LAST_TRIP.organiser === m && !tripsBy(m).some(t => (t.start || '') >= LAST_TRIP.year);
+    const cfg = tripSheet(null, 'past', fresh ? { title: LAST_TRIP.title, organiser: m, crowned: LAST_TRIP.crowned, start: '', end: LAST_TRIP.end, attendees: MEMBERS.map(x => x.id).filter(id => id !== LAST_TRIP.crowned) } : a === 'add-my-trip' ? { organiser: m } : {});
     return openSheet({ ...cfg, onSave: async v => {
       const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'done' });
       await load(); render(); toast(a === 'add-my-trip' ? 'Your reign is in the chronicle ♛' : 'Added to the archive.', undo(rec));
@@ -1667,6 +1802,7 @@ document.addEventListener('click', async e => {
   if (a === 'edit-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
     const past = t.status === 'done';
+    if (!past && !leads(t)) return onlyLeader(t);
     const cfg = tripSheet(t, past ? 'past' : 'plan');
     return openSheet({ ...cfg, onSave: async v => { await DB.update(t, cfg.toTrip(v)); await load(); render(); toast('Saved'); } });
   }
@@ -1678,18 +1814,46 @@ document.addEventListener('click', async e => {
   }
   if (a === 'choose-date') {
     const o = opt(b.dataset.opt); const t = planning(); if (!o || !t) return;
+    if (!leads(t)) return onlyLeader(t);
     return act(() => DB.update(t, { start: o.start, end: o.end }), 'Date picked! The countdown has begun.');
   }
   if (a === 'del-opt') {
     const o = opt(b.dataset.opt); if (!o) return;
+    if (!leads(planning())) return onlyLeader(planning());
     if (pendingDelete !== o.id) { pendingDelete = o.id; b.textContent = tr('Sure?'); return; }
     pendingDelete = null;
     return act(() => DB.remove(o), 'Date removed');
+  }
+  if (a === 'car-join' || a === 'car-leave' || a === 'car-del' || a === 'own-way') {
+    const t = planning(); const m = me(); if (!t || !m) return;
+    let cars = carsOf(t); let own = (t.own || []).slice();
+    const c = cars.find(x => x.id === b.dataset.car);
+    if (a === 'car-del') {
+      if (!c) return;
+      if (c.driver !== m && !leads(t)) return toast('Only the driver can remove their car.');
+      if (pendingDelete !== c.id) { pendingDelete = c.id; b.textContent = tr('Sure?'); return; }
+      pendingDelete = null;
+      return act(() => DB.update(t, { cars: cars.filter(x => x.id !== c.id) }), c.riders.length ? 'Car removed. Its passengers need a new ride.' : 'Car removed');
+    }
+    cars = cars.map(x => ({ ...x, riders: x.riders.filter(id => id !== m) }));
+    if (a === 'own-way') {
+      const on = !own.includes(m);
+      own = on ? [...own, m] : own.filter(id => id !== m);
+      return act(() => DB.update(t, { cars, own }), on ? 'Noted. See you there!' : 'OK, find a car with a free seat.');
+    }
+    if (a === 'car-join') {
+      const target = cars.find(x => x.id === b.dataset.car); if (!target) return;
+      if (target.riders.length >= (target.seats || 0)) return toast('That car is full.');
+      target.riders.push(m); own = own.filter(id => id !== m);
+      return act(() => DB.update(t, { cars, own }), `You’re riding with ${nameOf(target.driver)}. 🚗`);
+    }
+    return act(() => DB.update(t, { cars, own }), 'You got out. Find another seat.');
   }
   if (a === 'rsvp') {
     const t = planning(); if (!t) return;
     const rsvp = { ...(t.rsvp || {}) };
     const who = b.dataset.who, val = b.dataset.val;
+    if (who !== me()) return toast('Everyone answers only for themselves.');
     if (rsvp[who] === val) delete rsvp[who]; else rsvp[who] = val;
     const msg = who === 'nikol' && rsvp[who] === 'yes' ? 'Nikol says she’s coming. Bets are open on whether she arrives. 📸'
       : who === 'nikol' && rsvp[who] === 'love' ? 'As expected. We love you too, Nikol. 💌'
@@ -1698,6 +1862,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'wrap-up') {
     const t = trip(b.dataset.trip); if (!t) return;
+    if (!leads(t)) return onlyLeader(t);
     return openSheet({ ...wrapSheet(t), onSave: async v => {
       const crowned = v.crowned, start = v.when.start;
       let end = v.when.end; if (!end || end < start) end = start;
@@ -1767,6 +1932,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'del-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
+    if (me() !== t.organiser) return onlyLeader(t);
     if (pendingDelete !== t.id) { pendingDelete = t.id; b.textContent = tr('Click again to delete it for good'); return; }
     pendingDelete = null;
     const kids = [...S.options, ...S.expenses, ...S.photos].filter(o => o.trip_id === t.id);
@@ -1780,10 +1946,23 @@ document.addEventListener('submit', async e => {
   if (f.id === 'opt-form') {
     e.preventDefault();
     const t = planning(); if (!t) return;
+    if (!leads(t)) return onlyLeader(t);
     const fd = new FormData(f);
     const start = String(fd.get('start')); let end = String(fd.get('end') || '');
     if (!end || end < start) end = start;
     return act(() => DB.add('date_options', { trip_id: t.id, start, end, votes: me() ? { [me()]: 'yes' } : {} }), 'Dates proposed');
+  }
+  if (f.id === 'car-form') {
+    e.preventDefault();
+    const t = planning(); const m = me(); if (!t || !m) return;
+    const fd = new FormData(f);
+    const seats = Math.max(1, Math.min(8, Number(fd.get('seats')) || 1));
+    const from = String(fd.get('from') || '').trim();
+    const cars = carsOf(t).filter(c => c.driver !== m).map(c => ({ ...c, riders: c.riders.filter(id => id !== m) }));
+    cars.push({ id: uid(), driver: m, seats, from, riders: [] });
+    const own = (t.own || []).filter(id => id !== m);
+    const rsvp = (t.rsvp || {})[m] ? t.rsvp : { ...(t.rsvp || {}), [m]: 'yes' };
+    return act(() => DB.update(t, { cars, own, rsvp }), 'Your car is on the board. Thank you! 🚗');
   }
 });
 
