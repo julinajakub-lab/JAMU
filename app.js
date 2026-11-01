@@ -454,10 +454,59 @@ function viewHome() {
   </div>`;
 }
 
+/* ---------------- the gang's shared tasks ----------------
+   Whatever the whole gang owes right now, shown publicly on the Gang page: who's done, who isn't.
+   Each task: { id, title, href, who: [ids it applies to], done: id => bool }. */
+function groupTasks() {
+  const plan = planning();
+  const all = MEMBERS.map(m => m.id);
+  const list = [];
+  if (plan && !plan.start) {
+    const opts = S.options.filter(o => o.trip_id === plan.id);
+    if (opts.length) list.push({ id: 'vote', title: 'Vote on the dates for the next trip', href: '#next', who: all, done: id => opts.some(o => (o.votes || {})[id]) });
+  }
+  if (plan && plan.start) {
+    list.push({ id: 'rsvp', title: 'Say if you’re coming on the next trip', href: '#next', who: all, done: id => !!(plan.rsvp || {})[id] });
+    const going = goingTo(plan);
+    if (going.length) list.push({ id: 'ride', title: 'Sort out how you get to the cottage', href: '#next', who: going, done: id => hasRide(plan, id) });
+  }
+  const owers = MEMBERS.filter(m => PAST_RULERS.includes(m.id) || tripsBy(m.id).length).map(m => m.id);
+  if (owers.length) list.push({ id: 'chronicle', title: 'Write the archive pages of the trips you led', href: '#archive', who: owers, done: id => chronicleState(id) === 'done' });
+  return list.map(t => ({ ...t, ok: t.who.filter(t.done), missing: t.who.filter(id => !t.done(id)) }));
+}
+function taskBoard(tasks) {
+  if (!tasks.length) return '';
+  const row = t => {
+    const pct = Math.round(t.ok.length / t.who.length * 100);
+    const full = !t.missing.length;
+    return `
+      <div class="gtask${full ? ' full' : ''}">
+        <div class="gtask-head">
+          <a class="gtask-title" href="${t.href}">${t.title}</a>
+          <span class="num small ${full ? 'solved' : 'muted'}">${full ? '✓ Everyone’s done' : `${t.ok.length} of ${t.who.length} done`}</span>
+        </div>
+        <div class="poll-bar" aria-hidden="true"><span class="yes" style="width:${pct}%"></span></div>
+        <div class="gtask-who">
+          ${t.missing.length ? `<span class="small"><span class="muted">Still missing:</span> ${t.missing.map(id => `<span class="chip no">${esc(nameOf(id))}</span>`).join(' ')}</span>` : ''}
+          ${t.ok.length ? `<span class="av-row" title="Done">${t.ok.map(id => avatar(id, 'xs')).join('')}</span>` : ''}
+        </div>
+        ${t.missing.length ? `<div><button class="btn sm ghost" type="button" data-action="nudge" data-task="${t.id}">Copy a reminder for the group chat</button></div>` : ''}
+      </div>`;
+  };
+  return `
+    <section class="panel stack" id="tasks">
+      <div><p class="eyebrow">For all of us</p><h2>What the gang owes right now</h2><p class="muted small">Everything we all have to do, in plain sight. Done ones go green; the names still missing stay here until they do it.</p></div>
+      <div class="gtasks">${tasks.map(row).join('')}</div>
+    </section>`;
+}
+
 function viewGang() {
   const c = court();
   const done = doneTrips();
+  const tasks = groupTasks();
   const cards = MEMBERS.map(m => {
+    const owes = tasks.filter(t => t.missing.includes(m.id)).length;
+    const status = tasks.some(t => t.who.includes(m.id)) ? `<p class="owes ${owes ? 'open' : 'clear'} small">${owes ? `${owes} ${owes === 1 ? 'task waiting' : 'tasks waiting'}` : '✓ All done'}</p>` : '';
     const trips = done.filter(t => (t.attendees || []).includes(m.id)).length;
     const crowns = done.filter(t => t.organiser === m.id).length;
     const badge = m.id === c.ruler ? '<p class="member-tag crown">♛ Reigning</p>' : m.id === c.heir ? '<p class="member-tag">Heir to the throne</p>' : '';
@@ -475,6 +524,7 @@ function viewGang() {
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
           ${(m.links || []).length ? `<ul class="member-links">${m.links.map(l => `<li><a target="_blank" rel="noopener" href="${esc(l.url)}">${esc(l.title)} ↗</a></li>`).join('')}</ul>` : ''}
           ${m.honour ? `<p class="honour small"><span class="crown">★</span> <span>${esc(m.honour.text)}</span>${m.honour.url ? ` <a target="_blank" rel="noopener" href="${esc(m.honour.url)}"><span>${esc(m.honour.link || 'Open')}</span> ↗</a>` : ''}</p>` : ''}
+          ${status}
           <div class="tally num"><span>${trips} ${trips === 1 ? 'trip' : 'trips'}</span><span>${crowns} organised</span>${m.id === 'nikol' ? '<span>arrivals: pending</span>' : ''}</div>
         </div>
       </article>`;
@@ -486,6 +536,7 @@ function viewGang() {
       <h1>The Gang</h1>
       <p>Welcome to the gang. We met at JAMU in 2016 and started out by getting through school together. Today we know each other’s lives and keep showing up for them. Here we all are, with our nicknames and how many trips each of us has made it to. Tap your own photo to change it.</p>
     </section>
+    ${taskBoard(tasks)}
     <section class="gang">
       ${cards}
       <article class="panel ghost-card">
@@ -1690,6 +1741,14 @@ document.addEventListener('click', async e => {
   const trip = id => S.trips.find(t => t.id === id);
   const opt = id => S.options.find(o => o.id === id);
 
+  if (a === 'nudge') {
+    const t = groupTasks().find(x => x.id === b.dataset.task); if (!t) return;
+    const url = location.href.split('#')[0] + t.href;
+    const text = `${tr(t.title)}. ${tr('Still missing:')} ${t.missing.map(nameOf).join(', ')}. 👉 ${url}`;
+    try { await navigator.clipboard.writeText(text); toast('Reminder copied. Paste it into the group chat.'); }
+    catch { window.prompt(tr('Copy this reminder:'), text); }
+    return;
+  }
   if (a === 'switch-me') return pickMe(true);
   if (a === 'logout') return logout();
   if (a === 'copy') {

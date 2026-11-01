@@ -461,6 +461,15 @@ const exact = {
   'How we get to the cottage': 'Jak se dostaneme na chatu', 'Navigate ↗': 'Navigovat ↗', 'Copy': 'Kopírovat',
   'Offer your car or hop in with someone. On the day, tap “Navigate” and your phone takes you to the cottage.': 'Nabídni auto, nebo si k někomu přisedni. V den odjezdu ťukni na „Navigovat“ a telefon tě dovede až k chatě.',
   'Who is responsible for what, and what’s still missing.': 'Kdo za co odpovídá a co ještě chybí.',
+  // ---- the gang's shared tasks (Parta)
+  'Vote on the dates for the next trip': 'Hlasovat o termínu dalšího výletu', 'Say if you’re coming on the next trip': 'Dát vědět, jestli jedeš na další výlet',
+  'Sort out how you get to the cottage': 'Vyřešit, jak se dostaneš na chatu', 'Write the archive pages of the trips you led': 'Dopsat do archivu výlety, které jsi vedl(a)',
+  '✓ Everyone’s done': '✓ Hotovo mají všichni', 'Still missing:': 'Ještě chybí:',
+  'Copy a reminder for the group chat': 'Zkopírovat připomínku do skupiny',
+  'For all of us': 'Pro nás všechny', 'What the gang owes right now': 'Co teď parta dluží',
+  'Everything we all have to do, in plain sight. Done ones go green; the names still missing stay here until they do it.': 'Všechno, co máme udělat, hezky na očích. Hotové zezelená, a kdo ještě nic neudělal, tu svítí, dokud to nedodělá.',
+  'Reminder copied. Paste it into the group chat.': 'Připomínka zkopírovaná. Vlož ji do skupiny.', 'Copy this reminder:': 'Zkopíruj si připomínku:',
+  '✓ All done': '✓ Všechno hotovo',
   // ---- page welcomes (timeless: no names, they must stay true for every trip)
   'Welcome to the planning room, where our next weekend together takes shape. It is always led by whoever wears the crown, who decides the dates, the cottage and the address. The rest of us vote, say if we’re coming and sort out how to get there. Everything you need is below, step by step.': 'Vítej v plánovací místnosti. Tady se rodí náš další společný víkend. Vede ho vždy ten, kdo právě nosí korunu, a rozhoduje o termínu, chatě i adrese. My ostatní hlasujeme, dáváme vědět, jestli jedeme, a domlouváme se, jak se tam dostaneme. Všechno potřebné najdeš níž, krok za krokem.',
   'Welcome to the planning room. It’s empty for now, because the next trip hasn’t been started yet. Once whoever wears the crown starts it, this is where we vote on dates, say if we’re coming and work out how to get there.': 'Vítej v plánovací místnosti. Zatím je tu prázdno, další výlet ještě nikdo nezaložil. Jakmile ho založí ten, kdo právě nosí korunu, budeme tu hlasovat o termínu, dávat vědět, kdo jede, a domlouvat dopravu.',
@@ -503,6 +512,8 @@ const exact = {
 };
 
 const patterns = [
+  [/^(\d+) of (\d+) done$/, 'Hotovo: $1 z $2'],
+  [/^(\d+) tasks? waiting$/, (m, n) => `${n} ${plural(n, 'úkol čeká', 'úkoly čekají', 'úkolů čeká')}`],
   [/^Are you coming, (.+)\?$/, 'Jedeš, $1?'],
   [/^(Coming|Maybe|💌 Sends love|Can’t make it|Haven’t answered yet) · (\d+)$/, (m, l, n) => `${({ 'Coming': 'Jede', 'Maybe': 'Možná', '💌 Sends love': '💌 Posílá lásku', 'Can’t make it': 'Nemůže', 'Haven’t answered yet': 'Ještě neodpověděli' })[l]} · ${n}`],
   [/^(.+) takes care of this$/, 'Tohle má na starosti $1'],
