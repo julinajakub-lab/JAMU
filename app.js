@@ -388,6 +388,11 @@ function todoBlock() {
     const opts = S.options.filter(o => o.trip_id === plan.id);
     if (!plan.start && opts.length && m && !opts.some(o => (o.votes || {})[m])) add(`We’re choosing dates for <b>${esc(plan.title)}</b>. Which weekends work for you?`, `<a class="btn primary sm" href="#next">Vote on dates</a>`);
     if (m && !(plan.rsvp || {})[m]) add(`Are you coming to <b>${esc(plan.title)}</b>?`, `<a class="btn primary sm" href="#next">Answer</a>`);
+    if (m && goingTo(plan).includes(m) && !tasksOf(plan).some(x => x.who.includes(m))) add(`Take a task for <b>${esc(plan.title)}</b>: shopping, a meal, driving…`, `<a class="btn primary sm" href="#roles" data-action="scroll-roles">Pick a task</a>`);
+    if (m && m === plan.organiser) {
+      const nextStep = crownSteps(plan).find(x => !x.done && !x.later);
+      if (nextStep) add(`♛ You’re leading <b>${esc(plan.title)}</b>. Next step:`, `<a class="btn primary sm" href="#next">${nextStep.text}</a>`);
+    }
   } else if (m && m === court().ruler) {
     add('You’re the reigning monarch, so the next trip is yours to plan. Start with the cottage and a few date options.', `<button class="btn primary sm" type="button" data-action="new-plan">Plan the next trip</button>`);
   }
@@ -547,6 +552,95 @@ function viewGang() {
 const ANSWERS = [['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No']];
 const RSVP = [['yes', 'Coming'], ['maybe', 'Maybe'], ['no', 'Can’t'], ['love', '💌 Sends love']];
 
+/* ---------------- who does what while a trip is being prepared ----------------
+   The king or queen runs the preparations; everyone else votes, answers and takes a task.
+   Tasks live on the planning trip as tasks: [{ id, label, who: [] }]. Until someone touches them, the defaults below apply. */
+const DEFAULT_TASKS = [
+  { id: 'shop', label: 'Big shopping' },
+  { id: 'fri-dinner', label: 'Friday dinner' },
+  { id: 'sat-breakfast', label: 'Saturday breakfast' },
+  { id: 'sat-dinner', label: 'Saturday dinner' },
+  { id: 'drinks', label: 'Drinks' },
+  { id: 'cars', label: 'Driving (car with free seats)' },
+  { id: 'fun', label: 'Games & music' }
+];
+const tasksOf = t => (Array.isArray(t.tasks) ? t.tasks : DEFAULT_TASKS).map(x => ({ ...x, who: x.who || [] }));
+const goingTo = t => MEMBERS.filter(m => ['yes', 'maybe'].includes((t.rsvp || {})[m.id])).map(m => m.id);
+function crownSteps(t) {
+  const opts = S.options.filter(o => o.trip_id === t.id);
+  const tasks = tasksOf(t);
+  return [
+    { text: 'Propose a few weekends to vote on', done: !!(opts.length || t.start) },
+    { text: 'Pick the final date', done: !!t.start },
+    { text: 'Book the cottage and add the address', done: !!t.address },
+    { text: 'Write what to bring and how to get in under “Good to know”', done: !!(t.notes || '').trim() },
+    { text: 'Make sure every task below has someone', done: tasks.length > 0 && tasks.every(x => x.who.length) },
+    { text: 'After the trip: crown the heir and close the books', later: true }
+  ];
+}
+function gangSteps(t) {
+  const opts = S.options.filter(o => o.trip_id === t.id);
+  const rsvp = t.rsvp || {};
+  const tasks = tasksOf(t);
+  const voted = id => opts.some(o => (o.votes || {})[id]);
+  const steps = [];
+  if (!t.start) steps.push({ text: 'Vote on the weekends', missing: opts.length ? MEMBERS.filter(m => !voted(m.id)).map(m => m.id) : null, wait: !opts.length && 'Waiting for the dates.' });
+  steps.push({ text: 'Say if you’re coming', missing: MEMBERS.filter(m => !rsvp[m.id]).map(m => m.id) });
+  steps.push({ text: 'If you’re coming, take a task', missing: goingTo(t).filter(id => !tasks.some(x => x.who.includes(id))) });
+  steps.push({ text: 'After the trip: add what you paid for', later: true });
+  return steps;
+}
+function stepRow(s) {
+  const state = s.later ? 'later' : s.done || (s.missing && !s.missing.length) ? 'done' : 'open';
+  const mark = state === 'done' ? '✓' : state === 'later' ? '·' : '';
+  const who = s.wait ? `<span class="muted small">${s.wait}</span>`
+    : s.missing && s.missing.length ? `<span class="small"><span class="muted">Still waiting for:</span> ${s.missing.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</span>`
+    : s.missing ? '<span class="muted small">Everyone’s done.</span>' : '';
+  return `<li class="duty ${state}"><span class="tick" aria-hidden="true">${mark}</span><span class="stack" style="gap:4px"><span>${s.text}</span>${who}</span></li>`;
+}
+function rolesPanel(t) {
+  const m = me();
+  const isCrown = m && m === t.organiser;
+  const tasks = tasksOf(t);
+  const rows = tasks.map(x => {
+    const mine = m && x.who.includes(m);
+    return `
+      <div class="task ${x.who.length ? '' : 'free'}">
+        <div class="stack" style="gap:6px;min-width:0">
+          <b>${esc(x.label)}</b>
+          <span class="row" style="gap:6px">${x.who.length ? x.who.map(id => `<span class="person-chip">${avatar(id, 'xs')}${esc(nameOf(id))}</span>`).join('') : '<span class="muted small">Nobody yet</span>'}</span>
+        </div>
+        <span class="row" style="gap:6px">
+          ${m ? `<button class="btn sm ${mine ? 'ghost' : 'primary'}" type="button" data-action="task-claim" data-task="${esc(x.id)}">${mine ? 'Drop it' : 'I’ll do it'}</button>` : ''}
+          ${isCrown ? `<button class="btn sm ghost danger" type="button" data-action="task-del" data-task="${esc(x.id)}" aria-label="Remove this task">Remove</button>` : ''}
+        </span>
+      </div>`;
+  }).join('');
+  return `
+    <section class="stack" id="roles">
+      <div><p class="eyebrow">Who does what</p><h2>Preparing the trip together</h2></div>
+      <div class="two-col">
+        <section class="panel stack duties crown-duties">
+          <div><p class="eyebrow"><span class="crown">♛</span> The king or queen</p><h3>${esc(nameOf(t.organiser))}</h3><p class="muted small">Leads the preparations. If something’s unclear, ask here first.</p></div>
+          <ul class="duty-list">${crownSteps(t).map(stepRow).join('')}</ul>
+        </section>
+        <section class="panel stack duties">
+          <div><p class="eyebrow">Everyone else</p><h3>The whole gang</h3><p class="muted small">Each of us does this for ourselves. The king or queen sees who’s still missing.</p></div>
+          <ul class="duty-list">${gangSteps(t).map(stepRow).join('')}</ul>
+        </section>
+      </div>
+      <section class="panel stack">
+        <div class="spread"><div><p class="eyebrow">Tasks</p><h3>Who takes care of what</h3></div><p class="muted small">Tap to take a task. Two people can share one.</p></div>
+        ${!m ? '<p class="muted small">Tell us who you are (top right) to take a task.</p>' : ''}
+        <div class="tasks">${rows || '<p class="muted">No tasks yet.</p>'}</div>
+        <form id="task-form" class="row" style="align-items:end">
+          <label style="flex:1 1 220px">New task<input name="label" maxlength="60" placeholder="e.g. Firewood, Sunday lunch…" required></label>
+          <button class="btn" type="submit">Add task</button>
+        </form>
+      </section>
+    </section>`;
+}
+
 function viewNext() {
   const plan = planning();
   const c = court();
@@ -604,9 +698,12 @@ function viewNext() {
     <ol class="howto" aria-label="How this page works">
       <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
       <li><b>Say if you\u2019re coming</b><span>One tap next to your name. You can change it any time.</span></li>
+      <li><b>Take a task</b><span>Shopping, cooking a meal, driving\u2026 Each of us takes at least one.</span></li>
       <li><b>Get there</b><span>On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
       <li><b>Wrap it up</b><span>Back home, press the button at the bottom to crown the next monarch and share photos.</span></li>
     </ol>
+
+    ${rolesPanel(plan)}
 
     <div class="two-col">
       <section class="panel stack">
@@ -1686,6 +1783,27 @@ document.addEventListener('click', async e => {
     pendingDelete = null;
     return act(() => DB.remove(o), 'Date removed');
   }
+  if (a === 'scroll-roles') {
+    e.preventDefault();
+    if (route() !== 'next') { location.hash = '#next'; setTimeout(() => document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' }), 120); }
+    else document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  if (a === 'task-claim' || a === 'task-del') {
+    const t = planning(); const m = me(); if (!t || !m) return;
+    let tasks = tasksOf(t);
+    const x = tasks.find(k => k.id === b.dataset.task); if (!x) return;
+    if (a === 'task-del') {
+      if (m !== t.organiser) return;
+      if (pendingDelete !== x.id) { pendingDelete = x.id; b.textContent = tr('Sure?'); return; }
+      pendingDelete = null;
+      tasks = tasks.filter(k => k.id !== x.id);
+      return act(() => DB.update(t, { tasks }), 'Task removed');
+    }
+    const taking = !x.who.includes(m);
+    x.who = taking ? [...x.who, m] : x.who.filter(id => id !== m);
+    return act(() => DB.update(t, { tasks }), taking ? (x.id === 'drinks' ? 'Drinks are yours. #AlkoHolka approves. 🍷' : 'It’s yours. Thank you!') : 'Task dropped. Someone else can take it.');
+  }
   if (a === 'rsvp') {
     const t = planning(); if (!t) return;
     const rsvp = { ...(t.rsvp || {}) };
@@ -1784,6 +1902,13 @@ document.addEventListener('submit', async e => {
     const start = String(fd.get('start')); let end = String(fd.get('end') || '');
     if (!end || end < start) end = start;
     return act(() => DB.add('date_options', { trip_id: t.id, start, end, votes: me() ? { [me()]: 'yes' } : {} }), 'Dates proposed');
+  }
+  if (f.id === 'task-form') {
+    e.preventDefault();
+    const t = planning(); if (!t) return;
+    const label = String(new FormData(f).get('label') || '').trim(); if (!label) return;
+    const tasks = [...tasksOf(t), { id: uid(), label, who: [] }];
+    return act(() => DB.update(t, { tasks }), 'Task added');
   }
 });
 
