@@ -114,11 +114,11 @@ function translateDOM(root) {
 let demo = null;
 function demoData() {
   if (demo) return demo;
-  try { demo = JSON.parse(ls.get('jamu-demo-v4')); } catch { demo = null; }
+  try { demo = JSON.parse(ls.get('jamu-demo-v5')); } catch { demo = null; }
   if (!Array.isArray(demo)) { demo = seedDemo(); saveDemo(); }
   return demo;
 }
-function saveDemo() { ls.set('jamu-demo-v4', JSON.stringify(demo)); }
+function saveDemo() { ls.set('jamu-demo-v5', JSON.stringify(demo)); }
 function seedDemo() {
   // Example content so the demo isn't empty. The real database starts empty.
   const now = new Date().toISOString();
@@ -543,7 +543,7 @@ function rolesPanel(t) {
     </section>`;
 }
 
-function transportPanel(t) {
+function transportPanel(t, cottageHtml = '') {
   const m = me();
   const cars = carsOf(t);
   const own = t.own || [];
@@ -575,7 +575,8 @@ function transportPanel(t) {
     : '<p class="small solved">✓ Transport is sorted. Everyone who’s coming has a way there.</p>';
   return `
       <section class="panel stack" id="transport">
-        <div class="spread"><div><p class="eyebrow step-tag">Step 3 · Transport</p><h2>Who drives, who rides</h2></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
+        <div class="spread"><div><p class="eyebrow step-tag">Step 3 · Getting there</p><h2>How we get to the cottage</h2></div><span class="chip num">${free} ${free === 1 ? 'free seat' : 'free seats'}</span></div>
+        ${cottageHtml}
         ${status}
         <div class="cars">${carHtml || '<p class="muted">No cars offered yet. Got one? Offer it below.</p>'}</div>
         ${own.length ? `<p class="small"><span class="muted">Getting there on their own:</span> ${own.map(id => `<span class="chip">${esc(nameOf(id))}</span>`).join(' ')}</p>` : ''}
@@ -653,6 +654,19 @@ function viewNext() {
     .map(([k, l]) => [l, MEMBERS.filter(m => rsvp[m.id] === k).map(m => m.id)])
     .concat([['Haven’t answered yet', MEMBERS.filter(m => !rsvp[m.id]).map(m => m.id)]])
     .filter(([, ids]) => ids.length);
+  const cottageHtml = `
+      <div class="trip-place">
+        <div class="stack" style="gap:2px;min-width:0">
+          <b>${esc(plan.place || 'Place not set yet')}</b>
+          ${addr ? `<span class="muted small addr-line">${esc(addr)}</span>` : `<span class="muted small">${lead ? 'No address yet.' : `No address yet. ${esc(nameOf(plan.organiser))} adds it once the cottage is booked.`}</span>`}
+        </div>
+        <span class="row" style="gap:6px">
+          ${addr ? `<a class="btn primary sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate ↗</a>
+          <a class="btn sm" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
+          <button class="btn sm ghost" type="button" data-action="copy" data-text="${esc(addr)}">Copy</button>` : lead ? `<button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button>` : ''}
+        </span>
+      </div>
+      ${plan.notes ? `<p class="small notes-line"><span class="eyebrow">Good to know</span> ${esc(plan.notes)}</p>` : ''}`;
   const rsvpHtml = `
       <div class="rsvp-box" id="rsvp">
         ${meId ? `<div class="rsvp-me"><b>${esc(`Are you coming, ${nameOf(meId)}?`)}</b><span class="seg">${RSVP.map(([k, l]) => `<button type="button" class="${k} ${rsvp[meId] === k ? 'on' : ''}" data-action="rsvp" data-who="${meId}" data-val="${k}">${l}</button>`).join('')}</span></div>` : '<p class="muted small">Tell us who you are (top right) to answer.</p>'}
@@ -683,8 +697,7 @@ function viewNext() {
     <ol class="howto" aria-label="How this page works">
       <li><b>Vote on dates</b><span>Pick Yes, Maybe or No for each weekend. The organiser then picks the winner.</span></li>
       <li><b>Say if you’re coming</b><span>Once the date is picked, answer with one tap. You can change it any time.</span></li>
-      <li><b>Sort out your ride</b><span>Got a car? Offer the free seats. No car? Hop in with someone.</span></li>
-      <li><b>Get there</b><span>On the day, tap “Navigate” and your phone takes you to the cottage.</span></li>
+      <li><b>Get there</b><span>Offer your car or hop in with someone. On the day, tap \u201cNavigate\u201d and your phone takes you to the cottage.</span></li>
     </ol>
 
     <section class="panel stack" id="dates">
@@ -704,19 +717,8 @@ function viewNext() {
       </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
     </section>
 
-    ${transportPanel(plan)}
+    ${transportPanel(plan, cottageHtml)}
 
-    <section class="panel stack" id="cottage">
-      <p class="eyebrow step-tag">Step 4 · Getting there</p>
-      <h2>${esc(plan.place || 'Place not set yet')}</h2>
-      ${addr ? `<p class="addr">${esc(addr)}</p>
-        <div class="row">
-          <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate in Google Maps ↗</a>
-          <a class="btn" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
-          <button class="btn" type="button" data-action="copy" data-text="${esc(addr)}">Copy address</button>
-        </div>` : (lead ? `<p class="muted">No address yet. <button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button></p>` : `<p class="muted">No address yet. ${esc(nameOf(plan.organiser))} adds it once the cottage is booked.</p>`)}
-      ${plan.notes ? `<div class="stack" style="gap:4px"><p class="eyebrow">Good to know</p><p class="story">${esc(plan.notes)}</p></div>` : ''}
-    </section>
 
     ${rolesPanel(plan)}
 

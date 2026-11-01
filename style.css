@@ -682,3 +682,11 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 .rsvp-groups { display: grid; gap: 14px; }
 .rsvp-group { display: grid; gap: 8px; }
 .rsvp-group .eyebrow { margin: 0; }
+/* transport + cottage in one section */
+.trip-place { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 14px 18px; border-radius: 14px; background: var(--field); }
+.trip-place b { font: 400 1.2rem/1.25 var(--f-display); }
+.notes-line { margin: 0; color: var(--muted); }
+.notes-line .eyebrow { display: inline; margin-right: 6px; }
+.cars { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.car { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); }
+.transport-me { grid-template-columns: 1fr; }
