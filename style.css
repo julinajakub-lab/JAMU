@@ -613,3 +613,13 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 .route .leg { font-size: .72rem; font-weight: 600; letter-spacing: .06em; color: var(--accent); text-transform: uppercase; }
 .route .stop { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .route .stop b { font: 400 1.25rem var(--f-display); }
+
+/* the captain's picks: a few photos straight from the trip's Drive folder */
+.picks { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 150px; gap: 6px; }
+.pick { position: relative; overflow: hidden; border-radius: 10px; background: var(--head); display: block; }
+.pick.big { grid-column: span 2; grid-row: span 2; }
+.pick img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s var(--ease); }
+.pick:hover img { transform: scale(1.03); }
+.pick-cap { position: absolute; left: 8px; bottom: 8px; font: italic 400 .9rem var(--f-display); color: #fff; background: rgba(0,0,0,.42); padding: 2px 10px; border-radius: 999px; }
+@media (max-width: 560px) { .picks { grid-template-columns: 1fr 1fr; grid-auto-rows: 120px; } }
+.honour { margin-top: 8px; color: var(--muted); }

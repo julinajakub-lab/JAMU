@@ -20,6 +20,15 @@ window.JAMU_RELICS = [{
     relics: 'dyje-2020'
   },
 
+  // The captain's picks from the "Dyje 2020" Drive folder (photos by Dalibor). Shown straight from Drive.
+  picks: [
+    { id: '1_PffvFKy7uvxzy6ZWAL2fBrgw-TdtAKE', caption: 'Ještě na suchu' },
+    { id: '1LwAyg5aU3xvdHaSWV_U_yKU7Ffo5ANmX', caption: 'Sjednocený dech' },
+    { id: '1iur-OFMpg93N6hj3Cc0ObMLvIHdCAhV5', caption: 'Pauza u Dyje' },
+    { id: '1OhpPqer22lXcDmDCJwEwARwXqCmLG60S', caption: 'Barely, barely, barely' },
+    { id: '1qGCuUGs0q_hluwCmEwsjWohBMFpMKyiV', caption: 'Tábořiště' }
+  ],
+
   letter: {
     date: '2020-04-26', from: 'jakub', subject: 'Kubův emoční výlev a z toho vzniklé nápady',
     lead: [
