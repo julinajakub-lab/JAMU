@@ -193,6 +193,9 @@ const openTrip = () => doneTrips().filter(isOpen).sort((a, b) => (b.done_at || '
    Past monarchs add their old trips themselves; from now on every wrapped-up trip lands on its organiser. */
 const PAST_RULERS = window.JAMU_PAST_RULERS || [];
 const LAST_TRIP = window.JAMU_LAST_TRIP || {};
+// The handover note stays until the next crowning changes who reigns.
+const handover = () => LAST_TRIP.handover && court().ruler === LAST_TRIP.crowned
+  ? `<p class="handover" data-notr><span class="handover-mark" aria-hidden="true">✓</span>${esc(LAST_TRIP.handover)}</p>` : '';
 function chronicleGaps(t) {
   const gaps = [];
   if (!t.start) gaps.push('dates');
@@ -433,11 +436,14 @@ function viewHome() {
       </div>
     </section>
 
+    <div class="quick-wrap">
+    ${handover()}
     <a class="quick-next" href="#next">
       <span class="crown" aria-hidden="true">♛</span>
       <span>${esc(nameOf(plan ? plan.organiser : c.ruler))} leads the next trip</span>
       <span class="quick-go">Details →</span>
     </a>
+    </div>
 
     <section>
       <div class="section-head"><h2>By the numbers</h2></div>
@@ -610,6 +616,7 @@ function viewNext() {
   if (!plan) return `
     <div class="stack-lg">
       <section class="hero"><p class="eyebrow">Next trip</p><h1>Nothing planned yet</h1></section>
+      ${handover()}
       ${todoBlock()}
       <div class="empty">
         <div class="big">♛</div>
@@ -660,6 +667,7 @@ function viewNext() {
       ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
 
+    ${handover()}
     ${todoBlock()}
 
     <ol class="howto" aria-label="How this page works">

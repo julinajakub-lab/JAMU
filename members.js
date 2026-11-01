@@ -39,5 +39,6 @@ window.JAMU_DEFAULT_COURT = { ruler: 'julia', heir: '' };
 window.JAMU_PAST_RULERS = ['jakub', 'adam', 'alzbeta', 'ladislav', 'michaela', 'nikol', 'sylvie', 'viktoria'];
 
 // The trip that just ended (autumn 2026). Laďa led it; Júlia skipped it (so she starts unticked in 'Who came') but took the crown by letter.
-// Home asks Laďa to write its archive page until a 2026 trip of his is in the archive.
-window.JAMU_LAST_TRIP = { organiser: 'ladislav', title: 'Podzimní výlet 2026', year: '2026', end: '2026-11-01', crowned: 'julia' };
+// Home and Next trip show the handover line while Júlia reigns; Laďa is asked to write the archive page until a 2026 trip of his is in it.
+window.JAMU_LAST_TRIP = { organiser: 'ladislav', title: 'Podzimní výlet 2026', year: '2026', end: '2026-11-01', crowned: 'julia',
+  handover: 'Podzimní výlet 2026 pod Laďovým vedením je za námi. Díky, Laďo! Korunu převzala Júlia a vede ten další.' };

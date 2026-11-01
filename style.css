@@ -640,3 +640,6 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 .quick-next:hover { box-shadow: var(--e2); transform: translateY(-1px); }
 .quick-next .crown { font-size: 1.05rem; }
 .quick-next .quick-go { margin-left: auto; color: var(--accent); font-weight: 500; white-space: nowrap; }
+.quick-wrap { display: grid; gap: 10px; margin: 0 auto; width: 100%; max-width: 720px; }
+.handover { display: flex; gap: 10px; align-items: baseline; margin: 0 auto; max-width: 720px; width: 100%; padding: 0 20px; color: var(--muted); font: italic 400 1.02rem/1.5 var(--f-display); }
+.handover-mark { color: var(--accent); font-style: normal; }
