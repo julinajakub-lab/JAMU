@@ -125,7 +125,7 @@ const exact = {
   'The law guy': 'Ten přes právo',
   'Law was his domain at JAMU. Reads the small print so the rest of us don’t have to. Also built this website.': 'Právo bylo na JAMU jeho parketou. Čte drobné písmo, abychom nemuseli my. A {tiež|taky} postavil tenhle web.',
   'Head of SETKÁNÍ/ENCOUNTER 2019': 'Vedoucí SETKÁNÍ/ENCOUNTER 2019',
-  'Led the 29th SETKÁNÍ/ENCOUNTER and all of us with it. Still the one who brings us together. The nickname was earned.': 'Vedla 29. SETKÁNÍ/ENCOUNTER a s ním i nás všechny. Pořád je to ona, kdo nás dává dohromady. Přezdívku si vysloužila.',
+  'Led the 29th SETKÁNÍ/ENCOUNTER and all of us with it. Still the one who brings us together. In autumn 2026 she took the crown by letter, without even coming. Her nickname finally lives up to its name.': 'Vedla 29. SETKÁNÍ/ENCOUNTER a s ním i nás všechny. Pořád je to ona, kdo nás dává dohromady. Na podzim 2026 převzala korunu dopisem, aniž by vůbec dorazila. Její přezdívka si konečně přijde na své.',
   'Everyone’s favourite': 'Oblíbenec všech',
   'Friends with literally everyone. Every teacher, every porter, every person at JAMU knew and liked him. Still true.': 'Kamarádí úplně se všemi. Každý učitel, každý vrátný, každý člověk na JAMU ho znal a měl rád. Pořád to platí.',
   'Head of Off-program 2019': 'Vedoucí Off-programu 2019',

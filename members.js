@@ -10,7 +10,7 @@ window.JAMU_MEMBERS = [
   { id: 'jakub',    name: 'Jakub Julina',       short: 'Jakub',   nick: 'Honza Peniz',           jamu: 'The law guy',
     line: 'Law was his domain at JAMU. Reads the small print so the rest of us don’t have to. Also built this website.' },
   { id: 'julia',    name: 'Júlia Pecková',      short: 'Júlia',   nick: '#VedouciZajezdu',       jamu: 'Head of SETKÁNÍ/ENCOUNTER 2019',
-    line: 'Led the 29th SETKÁNÍ/ENCOUNTER and all of us with it. Still the one who brings us together. The nickname was earned.' },
+    line: 'Led the 29th SETKÁNÍ/ENCOUNTER and all of us with it. Still the one who brings us together. In autumn 2026 she took the crown by letter, without even coming. Her nickname finally lives up to its name.' },
   { id: 'ladislav', name: 'Ladislav Horák',     short: 'Laďa',    nick: 'PPLko',                 jamu: 'Everyone’s favourite',
     line: 'Friends with literally everyone. Every teacher, every porter, every person at JAMU knew and liked him. Still true.' },
   { id: 'michaela', name: 'Michaela Zemčíková', short: 'Míša',    nick: '#AlkoHolka',            jamu: 'Head of Off-program 2019',
@@ -30,4 +30,5 @@ window.JAMU_MEMBERS = [
 window.JAMU_GHOST = { name: 'Iva Černá', short: 'Iva' };
 
 // Who reigns when the database is brand new. Changed later by the crowning ceremony.
-window.JAMU_DEFAULT_COURT = { ruler: 'ladislav', heir: 'julia' };
+window.JAMU_DEFAULT_COURT = { ruler: 'julia', heir: '' };
+// Autumn 2026: Júlia skipped Laďa's trip but took over the crown by letter. The gang agreed.
