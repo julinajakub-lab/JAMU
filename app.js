@@ -147,6 +147,7 @@ function seedDemo() {
     { id: o2, collection: 'date_options', created_at: now, trip_id: t, start: fri(4, 24), end: fri(4, 26), votes: { ladislav: 'yes', julia: 'no', jakub: 'yes', sylvie: 'yes', adam: 'yes', viktoria: 'yes' } },
     { id: o3, collection: 'date_options', created_at: now, trip_id: t, start: fri(5, 8), end: fri(5, 10), votes: { ladislav: 'maybe', alzbeta: 'yes' } },
     { id: uid(), collection: 'milestones', created_at: now, date: `${y - 1}-06-12`, who: ['michaela'], kind: 'baby', title: 'Míša’s baby is born (example)', label: 'First baby of the gang', note: 'Replace this example with the real date.' },
+    ...((window.JAMU_RELICS || []).filter(r => r.prepared).map(r => ({ id: uid(), collection: 'trips', created_at: now, status: 'done', ...r.prepared }))),
     { id: uid(), collection: 'milestones', created_at: now, date: '2019-06-20', who: [], kind: 'school', title: 'We survive JAMU (example)', label: '', note: 'State exams done. Nobody cried. (Everybody cried.)' }
   ];
 }
@@ -390,7 +391,10 @@ function todoBlock() {
       add(`♛ You organised <b>${esc(t.title || 'Untitled trip')}</b>, so its archive page is yours to finish. Still missing: ${gapChips(t)}`,
         `<button class="btn primary sm" type="button" data-action="edit-trip" data-trip="${t.id}">Finish the page</button>`));
     if (PAST_RULERS.includes(m) && !chroniclesClosed()[m]) {
-      if (!mine.length) add('♛ You’ve worn the crown before, so the chronicle of your reign is yours to write. Add the trip you organised: when, where, the photos and what happened.',
+      const ready = preparedFor(m);
+      if (ready) add(`♛ Your trip <b>${esc(ready.prepared.title)}</b> is written up from the old emails and the Drive. Check it, fix what’s wrong and add it to the archive.`,
+        `<button class="btn primary sm" type="button" data-action="add-prepared" data-relic="${esc(ready.id)}">Check and add</button>`);
+      else if (!mine.length) add('♛ You’ve worn the crown before, so the chronicle of your reign is yours to write. Add the trip you organised: when, where, the photos and what happened.',
         `<button class="btn primary sm" type="button" data-action="add-my-trip">Add my trip</button>`);
       else add('♛ Did you organise any other trip before this website existed? Add it too, or tell us that was all.',
         `<span class="row" style="gap:6px"><button class="btn sm" type="button" data-action="add-my-trip">Add another trip</button><button class="btn sm ghost" type="button" data-action="chronicle-done">That was all of them</button></span>`);
@@ -1021,8 +1025,100 @@ function viewTrip(t, { after = false } = {}) {
       <div><button class="btn sm" type="button" data-action="edit-trip" data-trip="${t.id}">Add story or quotes</button></div>
     </section>
 
+    ${relicsSection(t)}
+
     <section class="row"><button class="btn sm ghost danger" type="button" data-action="del-trip" data-trip="${t.id}">Delete this trip</button></section>
   </div>`;
+}
+
+/* ---------------- from the captain's drawer ----------------
+   Bits of the old organising docs (relics.js), shown verbatim on the trip they belong to. */
+const RELICS = window.JAMU_RELICS || [];
+const relicFor = t => RELICS.find(r => r.match(t));
+const preparedFor = id => RELICS.find(r => r.prepared && r.prepared.organiser === id && !S.trips.some(t => r.match(t)));
+const said = (who, text, cls = '') => `<figure class="said ${cls}">${who ? avatar(who, 'xs') : '<span class="av xs anon" aria-hidden="true">?</span>'}<blockquote data-notr>${esc(text)}</blockquote>${who ? `<figcaption class="muted small" data-notr>${esc(nameOf(who))}</figcaption>` : ''}</figure>`;
+function relicsSection(t) {
+  const r = relicFor(t); if (!r) return '';
+  const L = r.letter, P = r.poll, B = r.budget, V = r.voices, G = r.guide, R = r.route;
+  const panes = [];
+  if (L) panes.push(['letter', 'The letter', `
+    <article class="letter">
+      <p class="letter-meta"><span data-notr>${esc(L.subject)}</span><span class="muted">${esc(fmtDate(L.date))}</span></p>
+      <div class="letter-body" data-notr>
+        ${L.lead.map(x => `<p>${esc(x)}</p>`).join('')}
+        <p class="named">${esc(L.named)}</p>
+      </div>
+      <p class="letter-aside small">This is where our name comes from.</p>
+      <details class="letter-more"><summary>Read the rest of the letter</summary>
+        <div class="letter-body" data-notr>
+          ${L.rest.map(([h, x]) => `<p><b>${esc(h)}</b><br>${esc(x)}</p>`).join('')}
+          <p class="sign">${esc(L.sign)}</p>
+          ${L.ps.map(x => `<p class="small">${esc(x)}</p>`).join('')}
+        </div>
+      </details>
+    </article>
+    ${L.reply ? `<div class="stack" style="gap:8px"><p class="eyebrow">The first reply, the same afternoon</p>${said(L.reply.from, L.reply.text)}</div>` : ''}`]);
+  if (P) {
+    const best = Math.max(...P.rows.map(([, v]) => v.reduce((a, b) => a + b, 0)));
+    panes.push(['poll', 'The date poll', `
+      <p class="muted small">Ten people, nine windows in July and August. Only one person could do every single one.</p>
+      <div class="poll-wrap"><table class="poll">
+        <thead><tr><th></th>${P.people.map(id => `<th title="${esc(nameOf(id))}">${avatar(id, 'xs')}</th>`).join('')}<th></th></tr></thead>
+        <tbody>${P.rows.map(([d, v]) => { const n = v.reduce((a, b) => a + b, 0); const win = d === P.winner; return `
+          <tr class="${win ? 'win' : ''}"><th class="num" data-notr>${esc(d)}</th>${v.map((x, i) => `<td><span class="pd ${x ? 'on' : ''}${x && P.people[i] === 'jakub' ? ' cap' : ''}" aria-label="${x ? 'yes' : 'no'}"></span></td>`).join('')}<td class="small num">${win ? '<span class="chip yes">We went</span>' : n === best ? '' : `<span class="muted">${n}/10</span>`}</td></tr>`; }).join('')}</tbody>
+      </table></div>
+      <p class="small"><span class="crown">♛</span> <b>El Capitano Kubko</b> <span class="muted">could do all of them.</span></p>
+      <p class="small muted" data-notr>${esc(P.deadline)}</p>
+      <div class="said-list">${P.notes.map(n => said(n.who, n.text)).join('')}</div>`]);
+  }
+  if (B) panes.push(['budget', 'The budget', `
+    <div class="two-col">
+      <div class="receipt">
+        <p class="receipt-head">Budget 2020</p>
+        ${B.lines.map(([k, v]) => `<p class="rl"><span data-notr>${esc(k)}</span><span class="num">${kc(v)}</span></p>`).join('')}
+        <p class="rl total"><span>Per person</span><span class="num">${kc(B.total)}</span></p>
+        <p class="small muted" data-notr>${esc(B.note)}</p>
+      </div>
+      <div class="stack">
+        <p class="eyebrow">The first estimate, in the letter</p>
+        <p class="relic-q" data-notr>${esc(B.estimate)}</p>
+        <p class="eyebrow">The fleet</p>
+        <ul class="fleet">${B.fleet.map(([d, x]) => `<li><span class="muted small num" data-notr>${esc(d)}</span><span data-notr>${esc(x)}</span></li>`).join('')}</ul>
+      </div>
+    </div>`]);
+  if (V) panes.push(['voices', 'What we said', `
+    <p class="eyebrow" data-notr>${esc(V.question)}</p>
+    <p class="small"><span class="chip yes">Yes ${V.tally.yes.length}</span> <span class="chip no">No ${V.tally.no.length}</span> <span class="chip">Don’t care ${V.tally.meh.length}</span> <span class="muted">A perfect draw. Very us.</span></p>
+    <div class="said-list">${V.quotes.map(q => said(q.who, q.text)).join('')}</div>`]);
+  if (G) panes.push(['guide', 'How to do a river', `
+    <p class="muted" data-notr>${esc(G.intro)}</p>
+    <ol class="guide" data-notr>${G.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+    <div class="two-col">
+      <div class="stack" style="gap:8px"><p class="eyebrow">What you need for sure</p>
+        <ul class="must" data-notr>${G.must.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <p class="small muted" data-notr>${esc(G.rule)}</p></div>
+      <figure class="quote-block stack" style="gap:8px;margin:0"><p class="quote" data-notr>„${esc(G.quote.text)}“</p><figcaption class="muted small" data-notr>${esc(G.quote.by)}</figcaption></figure>
+    </div>
+    <p class="small muted">And a joke, so you’d remember the email:</p>
+    <p class="relic-q small" data-notr>${esc(G.joke)}</p>`]);
+  if (R) {
+    const km = R.stops.reduce((a, x) => a + (x.km || 0), 0);
+    panes.push(['route', 'The route', `
+      <ol class="route">${R.stops.map(x => `
+        <li>${x.km ? `<span class="leg num">${x.km} km</span>` : ''}<span class="stop"><b data-notr>${esc(x.name)}</b><span class="muted small num" data-notr>${esc(x.night)}</span></span>${x.text ? `<span class="small muted" data-notr>${esc(x.text)}</span>` : ''}</li>`).join('')}
+      </ol>
+      <p class="small"><b class="num">${km} km</b> <span class="muted">on the water, four nights in camps.</span></p>
+      <div class="hint stack" style="gap:6px"><p class="small"><b>Meeting point</b> · <span data-notr>${esc(R.start.name)}</span> · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(R.start.gps)}" target="_blank" rel="noopener">Open in Maps</a></p><p class="small" data-notr>${esc(R.start.note)}</p></div>`]);
+  }
+  if (!panes.length) return '';
+  let pick = null; try { pick = ls.get('jamu-drawer'); } catch {}
+  if (!panes.some(p => p[0] === pick)) pick = panes[0][0];
+  return `
+    <section class="panel stack drawer">
+      <div><p class="eyebrow">From the captain’s drawer</p><h2>The old Drive, exactly as we wrote it</h2></div>
+      <div class="tabs" role="tablist">${panes.map(([k, l]) => `<button type="button" role="tab" class="tab" data-action="relic-tab" data-pane="${k}" aria-selected="${k === pick}">${l}</button>`).join('')}</div>
+      ${panes.map(([k, , h]) => `<div class="drawer-pane stack" role="tabpanel" data-pane="${k}" ${k === pick ? '' : 'hidden'}>${h}</div>`).join('')}
+    </section>`;
 }
 
 function viewAfter() {
@@ -1394,8 +1490,9 @@ const live = {
 const SHARE_HINT = 'I’m sure I don’t have to tell you, but… is the folder shared with “Anyone with the link”? 😉';
 
 /* ---- the windows ---- */
-function tripSheet(t, mode, preset = {}) {
+function tripSheet(t0, mode, preset = {}) {
   const past = mode === 'past';
+  const t = t0 || (preset.title ? preset : null);
   const fields = [
     { key: 'organiser', type: 'select', icon: 'person', label: 'Organiser', options: personOptions(), value: t?.organiser || preset.organiser || court().ruler, hint: !t && !past ? 'Defaults to whoever wears the crown.' : '' },
     { key: 'when', type: 'dates', icon: 'cal', label: 'When', vote: !past && !t, value: { start: t?.start || '', end: t?.end || '', vote: !past && !t }, check: chk.dates(past), live: live.dates },
@@ -1411,17 +1508,18 @@ function tripSheet(t, mode, preset = {}) {
     { key: 'story', type: 'area', icon: 'text', label: 'The story', value: t?.story || '', placeholder: 'A few sentences. What will we still laugh about in ten years?' },
     { key: 'quotes', type: 'area', icon: 'quote', label: 'Quotes', rows: 2, value: t?.quotes || '', placeholder: 'One per line. “Has anyone seen Nikol?”' });
   return {
-    eyebrow: t ? 'Edit trip' : past ? 'Past trip for the archive' : 'New trip file',
-    kindIcon: t ? 'text' : 'plus',
+    eyebrow: t0 ? 'Edit trip' : past ? 'Past trip for the archive' : 'New trip file',
+    kindIcon: t0 ? 'text' : 'plus',
     titlePh: past ? 'Which trip was it?' : 'Name the trip', title: t?.title || '',
-    primary: t ? 'Save changes' : past ? 'Add to archive' : 'Create trip file',
+    primary: t0 ? 'Save changes' : past ? 'Add to archive' : 'Create trip file',
     terms: !t && !past,
-    draft: t ? 'trip-' + t.id : past ? 'past-trip' : 'new-trip',
+    draft: t0 ? 'trip-' + t0.id : preset.relics ? 'prepared-' + preset.relics : past ? 'past-trip' : 'new-trip',
     fields,
     toTrip: v => {
       const d = { title: v.title, organiser: v.organiser, place: v.place, start: v.when.start, end: v.when.end || v.when.start };
       if (!d.start) d.end = '';
       if (past) Object.assign(d, { crowned: v.crowned, attendees: v.attendees, photos_url: v.photos_url, story: v.story, quotes: v.quotes });
+      if (!t0 && preset.relics) d.relics = preset.relics;
       else Object.assign(d, { address: v.address, notes: v.notes });
       return d;
     }
@@ -1536,6 +1634,21 @@ document.addEventListener('click', async e => {
       const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'done' });
       await load(); render(); toast(a === 'add-my-trip' ? 'Your reign is in the chronicle ♛' : 'Added to the archive.', undo(rec));
     } });
+  }
+  if (a === 'add-prepared') {
+    const r = RELICS.find(x => x.id === b.dataset.relic); if (!r) return;
+    const cfg = tripSheet(null, 'past', r.prepared);
+    return openSheet({ ...cfg, flash: 'Filled in from the old emails and the Drive. Check who came and who got crowned.', onSave: async v => {
+      const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'done' });
+      await load(); render(); toast('Your reign is in the chronicle ♛', undo(rec));
+    } });
+  }
+  if (a === 'relic-tab') {
+    const box = b.closest('.drawer'); if (!box) return;
+    $$('[data-action="relic-tab"]', box).forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    $$('.drawer-pane', box).forEach(x => { x.hidden = x.dataset.pane !== b.dataset.pane; });
+    try { ls.set('jamu-drawer', b.dataset.pane); } catch {}
+    return;
   }
   if (a === 'chronicle-done') {
     const m = me(); if (!m) return;
