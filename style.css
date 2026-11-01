@@ -687,12 +687,3 @@ table.poll { border-collapse: separate; border-spacing: 0; font-size: .85rem; }
 .transport-me { grid-template-columns: 1fr; }
 
 /* ---------- Gang: shared tasks board ---------- */
-.gtasks { display: grid; }
-.gtask { display: grid; gap: 10px; padding: 16px 0; border-top: 1px solid var(--line-2); }
-.gtask:first-child { border-top: 0; padding-top: 4px; }
-.gtask-head { display: flex; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; align-items: baseline; }
-.gtask-title { font: 400 1.15rem/1.3 var(--f-display); color: var(--ink); text-decoration: none; }
-.gtask-title:hover { text-decoration: underline; text-decoration-color: var(--accent); }
-.gtask .poll-bar .yes { background: var(--accent); }
-.gtask-who { display: flex; justify-content: space-between; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
-.gtask.full { opacity: .75; }
