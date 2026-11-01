@@ -430,8 +430,9 @@ function viewHome() {
   const c = court();
   const plan = planning();
   const done = doneTrips();
-  const years = new Date().getFullYear() - 2016;
-  const nikolCame = done.filter(t => (t.attendees || []).includes('nikol')).length;
+  const years = new Date().getFullYear() - 2019; // graduated through ENCOUNTER 2019
+  const together = new Date().getFullYear() - 2016;
+  const nikolCame = Math.max(1, done.filter(t => (t.attendees || []).includes('nikol')).length); // she came once, around 2021
   const quotes = allQuotes();
   const q = quotes.length ? quotes[Math.floor(Math.random() * quotes.length)] : { text: FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)] };
   let nextBlock;
@@ -472,7 +473,7 @@ function viewHome() {
       <p class="eyebrow">A letter to start with</p>
       <div class="letter-body">
         <p class="greeting">Hi, friends,</p>
-        <p>we met at JAMU in 2016. Deadlines, long nights over schoolwork and one whole international festival brought us together. Almost ten years later, classmates have become family. We are there for each other’s new jobs and new homes, babies and worries, big questions about the world and small ones about dinner.</p>
+        <p>we met at JAMU in 2016. Deadlines, long nights over schoolwork and one whole international festival brought us together. Ten years later, classmates have become family. We are there for each other’s new jobs and new homes, babies and worries, big questions about the world and small ones about dinner.</p>
         <p>I love you very much, and I know we all love each other, even when we only manage to meet a few times a year.</p>
         <p class="letter-sep" aria-hidden="true">· · ·</p>
         <p>So why this page? So our trips are easier to plan and nothing from them gets lost. Until now everything was scattered across chats, spreadsheets and Drive folders. Now it’s all in one place:</p>
@@ -506,14 +507,14 @@ function viewHome() {
       <div class="section-head"><h2>By the numbers</h2></div>
       <div class="kpis">
         <div class="kpi"><b>${done.length}</b><span class="muted small">trips in the archive</span></div>
-        <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU</span></div>
-        <div class="kpi"><b>${done.filter(t => t.crowned).length}</b><span class="muted small">crowns handed over</span></div>
-        <div class="kpi"><b>${nikolCame}/${done.length}</b><span class="muted small">trips Nikol arrived at</span></div>
+        <div class="kpi"><b>${together}</b><span class="muted small">years since we met at JAMU</span></div>
+        <div class="kpi"><b>${years}</b><span class="muted small">years since we survived JAMU (graduation after ENCOUNTER 2019)</span></div>
+        <div class="kpi"><b>${nikolCame}×</b><span class="muted small">Nikol arrived. About five years ago, and nobody remembers which trip.</span></div>
       </div>
     </section>
 
     <section class="stack quote-block" style="gap:8px">
-      <p class="eyebrow">Overheard at a cottage</p>
+      <p class="eyebrow">From our memories</p>
       <p class="quote">${esc(q.text)}</p>
       ${q.trip ? `<p class="muted small">from <a href="#trip-${esc(q.trip.id)}">${esc(q.trip.title)}</a></p>` : ''}
     </section>
