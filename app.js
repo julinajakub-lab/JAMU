@@ -564,6 +564,10 @@ const DEFAULT_TASKS = [
   { id: 'games', label: 'Board games' }
 ];
 const tasksOf = t => (Array.isArray(t.tasks) ? t.tasks : DEFAULT_TASKS).map(x => ({ ...x, who: x.who || [] }));
+// Rights: the trip's king or queen runs the planning; everyone else votes, answers for themselves and takes tasks.
+// Who you are is picked on this device (top right), so this keeps honest people in their lane rather than locking anything.
+const leads = t => !!t && !!me() && me() === t.organiser;
+const onlyLeader = t => toast(`Only ${nameOf(t.organiser)} can do that. ♛`);
 const goingTo = t => MEMBERS.filter(m => ['yes', 'maybe'].includes((t.rsvp || {})[m.id])).map(m => m.id);
 function crownSteps(t) {
   const opts = S.options.filter(o => o.trip_id === t.id);
@@ -650,7 +654,7 @@ function viewNext() {
         <div class="big">♛</div>
         <h3>${esc(nameOf(c.ruler))}, the stage is yours.</h3>
         <p class="muted">Start a plan: add the cottage, then propose dates for everyone to vote on.</p>
-        <button class="btn primary" type="button" data-action="new-plan">Start planning the next trip</button>
+        ${me() === c.ruler ? '<button class="btn primary" type="button" data-action="new-plan">Start planning the next trip</button>' : `<p class="muted small">Only ${esc(nameOf(c.ruler))} can start it. Nudge them.</p>`}
       </div>
     </div>`;
 
@@ -658,6 +662,7 @@ function viewNext() {
   const score = o => Object.values(o.votes || {}).reduce((s, v) => s + (v === 'yes' ? 1 : v === 'maybe' ? .5 : 0), 0);
   const best = opts.length > 1 ? opts.reduce((a, b) => score(b) > score(a) ? b : a) : null;
   const meId = me();
+  const lead = leads(plan);
   const addr = plan.address || '';
   const optsHtml = opts.map(o => {
     const v = o.votes || {};
@@ -673,10 +678,10 @@ function viewNext() {
         <div class="row">${Object.entries(v).map(([id, a]) => `<span class="chip ${a}">${esc(nameOf(id))}</span>`).join('') || '<span class="muted small">No votes yet.</span>'}</div>
         <div class="spread">
           ${meId ? `<span class="row small"><span class="muted">${esc(nameOf(meId))}:</span><span class="seg">${ANSWERS.map(([k, l]) => `<button type="button" class="${k} ${v[meId] === k ? 'on' : ''}" data-action="vote" data-opt="${o.id}" data-val="${k}">${l}</button>`).join('')}</span></span>` : '<span></span>'}
-          <span class="row">
+          ${lead ? `<span class="row">
             ${chosen ? '' : `<button class="btn sm" type="button" data-action="choose-date" data-opt="${o.id}">Pick this date</button>`}
             <button class="btn sm ghost danger" type="button" data-action="del-opt" data-opt="${o.id}" aria-label="Remove this date">Remove</button>
-          </span>
+          </span>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -691,7 +696,7 @@ function viewNext() {
       <p class="eyebrow">Next trip · organised by ♛ ${esc(nameOf(plan.organiser))}</p>
       <h1>${esc(plan.title || 'Untitled trip')}</h1>
       <p>${plan.start ? esc(fmtRange(plan.start, plan.end)) : 'Date not decided yet. Vote below.'}</p>
-      <div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>
+      ${lead ? `<div class="row"><button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Edit trip details</button></div>` : ''}
     </section>
 
     <ol class="howto" aria-label="How this page works">
@@ -713,39 +718,39 @@ function viewNext() {
             <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}">Navigate in Google Maps ↗</a>
             <a class="btn" target="_blank" rel="noopener" href="https://mapy.cz/zakladni?q=${encodeURIComponent(addr)}">Mapy.cz ↗</a>
             <button class="btn" type="button" data-action="copy" data-text="${esc(addr)}">Copy address</button>
-          </div>` : `<p class="muted">No address yet. <button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button></p>`}
+          </div>` : (lead ? `<p class="muted">No address yet. <button class="btn sm" type="button" data-action="edit-trip" data-trip="${plan.id}">Add the address</button></p>` : `<p class="muted">No address yet. ${esc(nameOf(plan.organiser))} adds it once the cottage is booked.</p>`)}
         ${plan.notes ? `<div class="stack" style="gap:4px"><p class="eyebrow">Good to know</p><p class="story">${esc(plan.notes)}</p></div>` : ''}
       </section>
 
       <section class="panel stack">
         <div class="spread"><div><p class="eyebrow">Date voting</p><h2>When can you come?</h2></div></div>
         ${!meId ? '<p class="muted small">Tell us who you are (top right) to vote.</p>' : ''}
-        <div>${optsHtml || '<p class="muted">No dates proposed yet. Add the first option below.</p>'}</div>
-        <form id="opt-form" class="grid2" style="align-items:end">
+        <div>${optsHtml || '<p class="muted">No dates proposed yet.</p>'}</div>
+        ${lead ? `<form id="opt-form" class="grid2" style="align-items:end">
           <label>From<input type="date" name="start" id="opt-start" required></label>
           <label>To<input type="date" name="end" id="opt-end"></label>
           <button class="btn" type="submit">Propose these dates</button>
-        </form>
+        </form>` : `<p class="muted small leader-note"><span class="crown">♛</span> ${esc(nameOf(plan.organiser))} proposes the weekends and picks the final date. You vote.</p>`}
       </section>
     </div>
 
     <section class="panel stack">
       <div class="spread">
         <div><p class="eyebrow">Who’s coming</p><h2 class="num">${tally.yes} coming · ${tally.maybe} maybe</h2></div>
-        <p class="muted small">Answer for yourself. (Nikol, we’ll believe it when we see you.)</p>
+        <p class="muted small">Everyone answers only for themselves. (Nikol, we’ll believe it when we see you.)</p>
       </div>
       <div>
         ${MEMBERS.map(m => `
           <div class="rsvp">
             <div class="person">${avatar(m.id, 'xs')}<span><b>${esc(m.short)}</b> <span class="muted small">${esc(m.nick)}</span></span></div>
-            <span class="seg">${RSVP.map(([k, l]) => `<button type="button" class="${k} ${rsvp[m.id] === k ? 'on' : ''}" data-action="rsvp" data-who="${m.id}" data-val="${k}">${l}</button>`).join('')}</span>
+            <span class="seg">${RSVP.map(([k, l]) => `<button type="button" class="${k} ${rsvp[m.id] === k ? 'on' : ''}" data-action="rsvp" data-who="${m.id}" data-val="${k}"${m.id === meId ? '' : ' disabled'}>${l}</button>`).join('')}</span>
           </div>`).join('')}
       </div>
     </section>
 
     <section class="panel spread">
       <div class="stack" style="gap:4px"><h3>Back home already?</h3><p class="muted small">Wrap up the trip: confirm who came, crown the next monarch, then add photos and expenses.</p></div>
-      <button class="btn gold" type="button" data-action="wrap-up" data-trip="${plan.id}">♛ Wrap up &amp; crown the next ruler</button>
+      ${lead ? `<button class="btn gold" type="button" data-action="wrap-up" data-trip="${plan.id}">♛ Wrap up &amp; crown the next ruler</button>` : `<span class="muted small">${esc(nameOf(plan.organiser))} wraps it up and crowns the next ruler.</span>`}
     </section>
   </div>`;
 }
@@ -1128,7 +1133,7 @@ function viewTrip(t, { after = false } = {}) {
 
     ${relicsSection(t)}
 
-    <section class="row"><button class="btn sm ghost danger" type="button" data-action="del-trip" data-trip="${t.id}">Delete this trip</button></section>
+    ${me() === t.organiser ? `<section class="row"><button class="btn sm ghost danger" type="button" data-action="del-trip" data-trip="${t.id}">Delete this trip</button></section>` : ''}
   </div>`;
 }
 
@@ -1720,6 +1725,7 @@ document.addEventListener('click', async e => {
     return;
   }
   if (a === 'new-plan') {
+    if (me() !== court().ruler) return toast(`Only ${nameOf(court().ruler)} can do that. ♛`);
     const cfg = tripSheet(null, 'plan');
     return openSheet({ ...cfg, onSave: async v => {
       const rec = await DB.add('trips', { ...cfg.toTrip(v), status: 'planning', rsvp: {} });
@@ -1764,6 +1770,7 @@ document.addEventListener('click', async e => {
   if (a === 'edit-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
     const past = t.status === 'done';
+    if (!past && !leads(t)) return onlyLeader(t);
     const cfg = tripSheet(t, past ? 'past' : 'plan');
     return openSheet({ ...cfg, onSave: async v => { await DB.update(t, cfg.toTrip(v)); await load(); render(); toast('Saved'); } });
   }
@@ -1775,10 +1782,12 @@ document.addEventListener('click', async e => {
   }
   if (a === 'choose-date') {
     const o = opt(b.dataset.opt); const t = planning(); if (!o || !t) return;
+    if (!leads(t)) return onlyLeader(t);
     return act(() => DB.update(t, { start: o.start, end: o.end }), 'Date picked! The countdown has begun.');
   }
   if (a === 'del-opt') {
     const o = opt(b.dataset.opt); if (!o) return;
+    if (!leads(planning())) return onlyLeader(planning());
     if (pendingDelete !== o.id) { pendingDelete = o.id; b.textContent = tr('Sure?'); return; }
     pendingDelete = null;
     return act(() => DB.remove(o), 'Date removed');
@@ -1808,6 +1817,7 @@ document.addEventListener('click', async e => {
     const t = planning(); if (!t) return;
     const rsvp = { ...(t.rsvp || {}) };
     const who = b.dataset.who, val = b.dataset.val;
+    if (who !== me()) return toast('Everyone answers only for themselves.');
     if (rsvp[who] === val) delete rsvp[who]; else rsvp[who] = val;
     const msg = who === 'nikol' && rsvp[who] === 'yes' ? 'Nikol says she’s coming. Bets are open on whether she arrives. 📸'
       : who === 'nikol' && rsvp[who] === 'love' ? 'As expected. We love you too, Nikol. 💌'
@@ -1816,6 +1826,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'wrap-up') {
     const t = trip(b.dataset.trip); if (!t) return;
+    if (!leads(t)) return onlyLeader(t);
     return openSheet({ ...wrapSheet(t), onSave: async v => {
       const crowned = v.crowned, start = v.when.start;
       let end = v.when.end; if (!end || end < start) end = start;
@@ -1885,6 +1896,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'del-trip') {
     const t = trip(b.dataset.trip); if (!t) return;
+    if (me() !== t.organiser) return onlyLeader(t);
     if (pendingDelete !== t.id) { pendingDelete = t.id; b.textContent = tr('Click again to delete it for good'); return; }
     pendingDelete = null;
     const kids = [...S.options, ...S.expenses, ...S.photos].filter(o => o.trip_id === t.id);
@@ -1898,6 +1910,7 @@ document.addEventListener('submit', async e => {
   if (f.id === 'opt-form') {
     e.preventDefault();
     const t = planning(); if (!t) return;
+    if (!leads(t)) return onlyLeader(t);
     const fd = new FormData(f);
     const start = String(fd.get('start')); let end = String(fd.get('end') || '');
     if (!end || end < start) end = start;

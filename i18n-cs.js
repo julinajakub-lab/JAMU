@@ -238,6 +238,7 @@ const exact = {
   'Tell us who you are (top right) to vote.': 'Abys mohl hlasovat, řekni nám, kdo jsi (vpravo nahoře).',
   'No votes yet.': '{Zatiaľ|Zatím} žádné hlasy.',
   'No dates proposed yet. Add the first option below.': 'Zatím žádné termíny. Přidej první možnost níže.',
+  'No dates proposed yet.': 'Zatím žádné navržené termíny.',
   'Most votes': 'Nejvíc hlasů',
   'Yes': 'Ano', 'Maybe': 'Možná', 'No': 'Ne',
   'Pick this date': 'Vybrat tento termín',
@@ -247,6 +248,8 @@ const exact = {
   'Propose these dates': 'Navrhnout termín',
   'Who’s coming': 'Kdo jede',
   'Answer for yourself. (Nikol, we’ll believe it when we see you.)': 'Odpovídej za sebe. (Nikol, uvěříme, až tě uvidíme.)',
+  'Everyone answers only for themselves. (Nikol, we’ll believe it when we see you.)': 'Každý odpovídá jen za sebe. (Nikol, uvěříme, až tě uvidíme.)',
+  'Everyone answers only for themselves.': 'Každý odpovídá jen za sebe.',
   'Coming': 'Jedu', 'Can’t': 'Nemůžu', '💌 Sends love': '💌 Posílá lásku',
   'Back home already?': 'Už jste doma?',
   'Wrap up the trip: confirm who came, crown the next monarch, then add photos and expenses.': 'Uzavři výlet: potvrď, kdo dorazil, korunuj dalšího panovníka a pak přidej fotky a výdaje.',
@@ -468,6 +471,11 @@ const exact = {
 };
 
 const patterns = [
+  [/^Only (.+) can do that\. ♛$/, 'Tohle může jen $1. ♛'],
+  [/^(.+) proposes the weekends and picks the final date\. You vote\.$/, 'Víkendy navrhuje a konečný termín vybírá $1. Ty hlasuješ.'],
+  [/^No address yet\. (.+) adds it once the cottage is booked\.$/, 'Adresa zatím chybí. Doplní ji $1, jakmile bude chata zarezervovaná.'],
+  [/^(.+) wraps it up and crowns the next ruler\.$/, 'Výlet uzavře a korunu předá $1.'],
+  [/^Only (.+) can start it\. Nudge them\.$/, 'Založit ho může jen $1. Klidně připomeň.'],
   [/^♛ (.+) just ended and you led it, so its archive page is yours to write: when, where, the photos and the story\. (.+) already wears the crown\.$/, '♛ $1 právě skončil a vedl jsi ho ty, takže jeho stránku do archivu píšeš ty: kdy, kde, fotky a příběh. Korunu už nosí $2.'],
   [/^When every payment above has been sent, (.+) closes the books\. The trip then moves to the archive, and the money talk ends\.$/, 'Až budou odeslané všechny platby, uzavře účty $1. Výlet se pak přesune do archivu a o penězích už se nemluví.'],
   [/^Yes (\d+)$/, 'Ano $1'], [/^No (\d+)$/, 'Ne $1'], [/^Don’t care (\d+)$/, 'Je mi to fuk $1'],
