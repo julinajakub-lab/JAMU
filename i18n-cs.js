@@ -3,11 +3,46 @@
 // Keys are the English texts exactly as they appear on the page.
 (() => {
 const plural = (n, one, few, many) => { n = Number(n); return n === 1 ? one : (n >= 2 && n <= 4) ? few : many; };
-const PAGES = { 'Home': 'Domů', 'The Gang': 'Parta', 'Timeline': 'Časová osa', 'Next Trip': 'Další výlet', 'Archive': 'Archiv', 'After the Trip': 'Po výletě', 'Suggestions': 'Návrhy', 'Whole site / new idea': 'Celý web / nový nápad' };
+const PAGES = { 'Home': 'Domů', 'The Gang': 'Parta', 'Timeline': 'Časová osa', 'Map': 'Mapa', 'Next Trip': 'Další výlet', 'Archive': 'Archiv', 'After the Trip': 'Po výletě', 'Suggestions': 'Návrhy', 'Whole site / new idea': 'Celý web / nový nápad' };
 const KINDS = { 'Baby': 'Miminko', 'Love & weddings': 'Láska a svatby', 'New home': 'Nové bydlení', 'Work': 'Práce', 'School': 'Škola', 'The gang': 'Parta', 'Other': 'Jiné', 'Trip': 'Výlet', 'SETKÁNÍ/ENCOUNTER': 'SETKÁNÍ/ENCOUNTER' };
 
 const exact = {
   ...PAGES,
+  'Trips': 'Výlety',
+  'Where we live': 'Kde bydlíme',
+  'All': 'Vše',
+  'Show on the map': 'Zobrazit na mapě',
+  'Map of our trips and homes': 'Mapa našich výletů a bydlišť',
+  'Loading map…': 'Načítáme mapu…',
+  'The map could not load. Please check your connection and reopen this page.': 'Mapu se nepodařilo načíst. Zkontroluj připojení a otevři stránku znovu.',
+  "That little piece of the world where we're together.": 'Ten kus světa, kde jsme spolu.',
+  "We couldn't find these on the map:": 'Na mapě se nám nepodařilo najít:',
+  'Fix the place': 'Upravit místo',
+  'Not on the map yet:': 'Na mapě zatím chybí:',
+  'Nikol, there is always a place for you here.': 'Nikol, tady pro tebe máme místo vždycky.',
+  'Open trip': 'Otevřít výlet',
+  'Set town': 'Zadat město',
+  'Change town': 'Změnit město',
+  'Where do you live now?': 'Kde teď bydlíš?',
+  'Town': 'Město',
+  'e.g. Brno, Bratislava': 'např. Brno, Bratislava',
+  "Just the town. We'll put you on the map.": 'Jen město. Přidáme tě na mapu.',
+  'Enter a town first.': 'Nejdřív napiš město.',
+  "Saved. You're on the map now.": 'Uloženo. Teď už jsi na mapě.',
+  'Finding this place…': 'Hledáme tohle místo…',
+  'Found place:': 'Nalezené místo:',
+  'Check the place, then save. You can add the district to be more precise.': 'Zkontroluj místo a pak ho ulož. Pro upřesnění můžeš připsat okres.',
+  'Save this place': 'Uložit tohle místo',
+  'Save without a map point': 'Uložit bez bodu na mapě',
+  'We couldn’t find that town. Try the town and country.': 'Tohle město jsme nenašli. Zkus připsat i zemi.',
+  'We couldn’t find this place. Adjust the address or save without a map point.': 'Tohle místo jsme nenašli. Upřesni adresu, nebo ulož výlet bez bodu na mapě.',
+  'Place lookup is unavailable. Please try again.': 'Vyhledávání míst teď není dostupné. Zkus to prosím znovu.',
+  'Place lookup is busy. Please try again in a moment.': 'Právě hledáme jiné místo. Zkus to prosím za chvíli.',
+  'Please log in again.': 'Přihlas se prosím znovu.',
+  'Some places could not be looked up. Reopen the map to try again.': 'Některá místa se nepodařilo vyhledat. Zkus mapu později otevřít znovu.',
+  'Zoom in': 'Přiblížit',
+  'Zoom out': 'Oddálit',
+  'contributors': 'přispěvatelé',
   // ---- demo example data (only shown before the real database is connected)
   'Spring cottage weekend (example)': 'Jarní víkend na chatě (příklad)',
   'Chata u Lesa (example)': 'Chata u Lesa (příklad)',
@@ -570,8 +605,8 @@ const patterns = [
   [/^The photo didn’t upload: (.*)$/, 'Fotka se nenahrála: $1'],
   [/^Couldn’t reach the database: (.*)$/, 'Nepodařilo se spojit s databází: $1'],
   [/^(.+) · (Baby|Love & weddings|New home|Work|School|The gang|Other|Trip|SETKÁNÍ\/ENCOUNTER)$/, (m, d, k) => `${d} · ${KINDS[k]}`],
-  [/^(.+) · (Home|The Gang|Timeline|Next Trip|Archive|After the Trip|Suggestions|Whole site \/ new idea) · (.+)$/, (m, who, p, d) => `${who === 'Someone' ? 'Někdo' : who} · ${PAGES[p]} · ${d}`],
-  [/^(Home|The Gang|Timeline|Next Trip|Archive|After the Trip|Suggestions) · Společenstvo Inscenace$/, (m, p) => `${PAGES[p]} · Společenstvo Inscenace`]
+  [/^(.+) · (Home|The Gang|Timeline|Map|Next Trip|Archive|After the Trip|Suggestions|Whole site \/ new idea) · (.+)$/, (m, who, p, d) => `${who === 'Someone' ? 'Někdo' : who} · ${PAGES[p]} · ${d}`],
+  [/^(Home|The Gang|Timeline|Map|Next Trip|Archive|After the Trip|Suggestions) · Společenstvo Inscenace$/, (m, p) => `${PAGES[p]} · Společenstvo Inscenace`]
 ];
 
 window.JAMU_I18N = Object.assign(window.JAMU_I18N || {}, { cs: { exact, patterns } });

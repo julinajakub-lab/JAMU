@@ -5,7 +5,7 @@ const C = window.JAMU_CONFIG || {};
 const MEMBERS = window.JAMU_MEMBERS;
 const GHOST = window.JAMU_GHOST;
 const byId = Object.fromEntries(MEMBERS.map((m, i) => [m.id, { ...m, hue: (i * 37 + 340) % 360 }]));
-const LIVE = !!(C.supabaseUrl && C.supabaseAnonKey && window.supabase);
+const LIVE = location.protocol !== 'file:' && !!(C.supabaseUrl && C.supabaseAnonKey && window.supabase);
 const sb = LIVE ? window.supabase.createClient(C.supabaseUrl, C.supabaseAnonKey) : null;
 const app = document.getElementById('app');
 
@@ -165,7 +165,7 @@ const DB = {
 };
 function strip(r) { const { id, collection, created_at, ...d } = r; return d; }
 
-let S = { trips: [], options: [], expenses: [], settings: null, profiles: [], photos: [], milestones: [], suggestions: [] };
+let S = { trips: [], options: [], expenses: [], settings: null, profiles: [], homes: [], photos: [], milestones: [], suggestions: [] };
 async function load() {
   const all = await DB.all();
   S = {
@@ -176,6 +176,7 @@ async function load() {
     suggestions: all.filter(r => r.collection === 'suggestions'),
     photos: all.filter(r => r.collection === 'photos'),
     profiles: all.filter(r => r.collection === 'profiles'),
+    homes: all.filter(r => r.collection === 'homes'),
     settings: all.find(r => r.collection === 'settings') || null
   };
 }
@@ -278,6 +279,7 @@ function renderLogin() {
   });
 }
 async function logout() {
+  unmountMap();
   if (LIVE) await sb.auth.signOut();
   ls.del('jamu-auth');
   renderLogin();
@@ -329,11 +331,11 @@ function openModal(html, onSubmit, setup) {
   const first = $('input, select, textarea, button', modal); if (first) first.focus();
 }
 function closeModal() { $$('.modal-bg').forEach(m => m.remove()); sheetCtx = null; document.body.classList.remove('has-sheet'); }
-document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (sheetCtx) closeSheet(); else if (me()) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (sheetCtx) closeSheet(); else { leafletMap?.closePopup(); if (me()) closeModal(); } });
 
 /* ---------------- layout ---------------- */
-const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['timeline', 'Timeline'], ['next', 'Next Trip'], ['archive', 'Archive']];
-const PAGE_NAMES = { home: 'Home', gang: 'The Gang', timeline: 'Timeline', next: 'Next Trip', archive: 'Archive', after: 'After the Trip', ideas: 'Suggestions' };
+const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['timeline', 'Timeline'], ['map', 'Map'], ['next', 'Next Trip'], ['archive', 'Archive']];
+const PAGE_NAMES = { home: 'Home', gang: 'The Gang', timeline: 'Timeline', map: 'Map', next: 'Next Trip', archive: 'Archive', after: 'After the Trip', ideas: 'Suggestions' };
 function route() { const h = (location.hash || '#home').slice(1); return h || 'home'; }
 
 function shell(active, content) {
@@ -473,6 +475,7 @@ function viewGang() {
         <div style="min-width:0">
           ${badge}
           <h3>${esc(m.name)}</h3>
+          <button class="home-town" type="button" data-action="edit-home" data-member="${esc(m.id)}" aria-label="${esc(tr('Set town') + ' · ' + m.short)}">📍 <span>${homeOf(m.id)?.town ? esc(homeOf(m.id).town) : m.id === me() ? 'Where do you live now?' : 'Set town'}</span></button>
           <p class="nick ${m.nick ? '' : 'unset'}">${m.nick ? esc(m.nick) : 'nickname not set yet'}</p>
           <p class="small" style="margin-top:6px">${esc(m.line)}</p>
           ${(m.links || []).length ? `<ul class="member-links">${m.links.map(l => `<li><a target="_blank" rel="noopener" href="${esc(l.url)}">${esc(l.title)} ↗</a></li>`).join('')}</ul>` : ''}
@@ -1395,6 +1398,11 @@ function openSheet(cfg) {
     $$('.sh-foot .btn', form).forEach(b => { b.disabled = true; });
     try {
       clearTimeout(ctx.timer);
+      if (cfg.location && !(await prepareMapLocation(ctx, v))) {
+        ctx.busy = false; setStatus(key ? 'saved' : 'new');
+        $$('.sh-foot .btn', form).forEach(b => { b.disabled = false; });
+        return;
+      }
       await cfg.onSave(v, { next });
       if (key) ls.del(key);
       if (next) {
@@ -1463,13 +1471,14 @@ const SHARE_HINT = 'I’m sure I don’t have to tell you, but… is the folder 
 function tripSheet(t0, mode, preset = {}) {
   const past = mode === 'past';
   const t = t0 || (preset.title ? preset : null);
+  const location = { kind: 'trip', original: t0, query: v => tripLocationKey(v) };
   const fields = [
     { key: 'organiser', type: 'select', icon: 'person', label: 'Organiser', options: personOptions(), value: t?.organiser || preset.organiser || court().ruler, hint: !t && !past ? 'Defaults to whoever wears the crown.' : '' },
     { key: 'when', type: 'dates', icon: 'cal', label: 'When', vote: !past && !t, value: { start: t?.start || '', end: t?.end || '', vote: !past && !t }, check: chk.dates(past), live: live.dates },
     { key: 'place', type: 'text', icon: 'pin', label: 'Where', value: t?.place || '', placeholder: 'Name of the cottage' }
   ];
+  fields.push({ key: 'address', type: 'text', icon: 'route', label: 'Address', value: t?.address || '', placeholder: 'Street, number, town', hint: 'We add the car route and a Maps link for you.' });
   if (!past) fields.push(
-    { key: 'address', type: 'text', icon: 'route', label: 'Address', value: t?.address || '', placeholder: 'Street, number, town', hint: 'We add the car route and a Maps link for you.' },
     { key: 'notes', type: 'area', icon: 'text', label: 'Good to know', value: t?.notes || '', placeholder: 'What to bring, who drives, keys, check-in…' });
   else fields.push(
     { key: 'crowned', type: 'select', icon: 'crown', label: 'Crowned at the end', options: personOptions({ blank: 'Not decided' }), value: t?.crowned || '' },
@@ -1485,12 +1494,13 @@ function tripSheet(t0, mode, preset = {}) {
     terms: !t && !past,
     draft: t0 ? 'trip-' + t0.id : preset.relics ? 'prepared-' + preset.relics : past ? 'past-trip' : 'new-trip',
     fields,
+    location,
     toTrip: v => {
-      const d = { title: v.title, organiser: v.organiser, place: v.place, start: v.when.start, end: v.when.end || v.when.start };
+      const d = { title: v.title, organiser: v.organiser, place: v.place, address: v.address, ...location.patch, start: v.when.start, end: v.when.end || v.when.start };
       if (!d.start) d.end = '';
       if (past) Object.assign(d, { crowned: v.crowned, attendees: v.attendees, photos_url: v.photos_url, story: v.story, quotes: v.quotes });
       if (!t0 && preset.relics) d.relics = preset.relics;
-      else Object.assign(d, { address: v.address, notes: v.notes });
+      if (!past) d.notes = v.notes;
       return d;
     }
   };
@@ -1583,6 +1593,18 @@ document.addEventListener('click', async e => {
 
   if (a === 'switch-me') return pickMe(true);
   if (a === 'logout') return logout();
+  if (a === 'edit-home') {
+    const m = member(b.dataset.member); if (!m || m.id === GHOST?.id) return;
+    const location = { kind: 'home', query: v => normalPlace(v.town) };
+    return openSheet({
+      eyebrow: 'Where we live', heading: m.name, primary: 'Save changes', location,
+      fields: [{ key: 'town', type: 'text', icon: 'pin', label: 'Town', value: homeOf(m.id)?.town || '', placeholder: 'e.g. Brno, Bratislava', hint: "Just the town. We'll put you on the map.", check: chk.required('Enter a town first.') }],
+      onSave: async v => {
+        await DB.add('homes', { member: m.id, town: v.town, ...location.patch, by: me() || '' });
+        await load(); render(); toast("Saved. You're on the map now.");
+      }
+    });
+  }
   if (a === 'copy') {
     try { await navigator.clipboard.writeText(b.dataset.text); toast('Address copied'); }
     catch { const r = document.createRange(); const el = $('.addr'); if (el) { r.selectNodeContents(el); getSelection().removeAllRanges(); getSelection().addRange(r); } toast('Address selected. Press Ctrl+C to copy.'); }
@@ -1799,8 +1821,290 @@ document.addEventListener('submit', async e => {
   }
 });
 
+/* ---------------- shared places ---------------- */
+const normalPlace = value => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('cs');
+const tripLocationKey = t => JSON.stringify([normalPlace(t.address), normalPlace(t.place)]);
+const hasCoordinates = r => r && typeof r.lat === 'number' && typeof r.lng === 'number' && Number.isFinite(r.lat) && Number.isFinite(r.lng) && Math.abs(r.lat) <= 90 && Math.abs(r.lng) <= 180;
+const homeOf = id => S.homes.filter(h => h.member === id).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0];
+const mapMembers = () => MEMBERS.filter(m => m.id !== GHOST?.id);
+const waitForPlace = ms => new Promise(resolve => setTimeout(resolve, ms));
+let geocodeQueue = Promise.resolve();
+let lastGeocodeAt = 0;
+// A fixed UUID lets the existing records primary key serialize requests across devices.
+// No schema change, RPC or additional key is needed. A crashed client's lease expires.
+const GEOCODE_LOCK = '5dc104a7-69d2-4a26-9a75-4c2761000001';
+async function withGeocodeLease(run) {
+  if (!LIVE) {
+    const previous = Math.max(lastGeocodeAt, Number(ls.get('jamu-geocode-last')) || 0);
+    await waitForPlace(Math.max(0, 1100 - (Date.now() - previous)));
+    lastGeocodeAt = Date.now();
+    ls.set('jamu-geocode-last', String(lastGeocodeAt));
+    return run();
+  }
+  const owner = uid();
+  for (let attempt = 0; attempt < 35; attempt++) {
+    if (!(await isLoggedIn())) throw new Error(tr('Please log in again.'));
+    const { error: staleError } = await sb.from('records').delete().eq('id', GEOCODE_LOCK).lt('created_at', new Date(Date.now() - 30000).toISOString());
+    if (staleError) throw staleError;
+    const { error } = await sb.from('records').insert({ id: GEOCODE_LOCK, collection: 'map_geocode_lock', data: { owner } });
+    if (!error) {
+      try { return await run(); }
+      finally {
+        // Leave at least 1.1s after the response before another device can request.
+        await waitForPlace(1100);
+        await sb.from('records').delete().eq('id', GEOCODE_LOCK).eq('data->>owner', owner);
+      }
+    }
+    if (error.code !== '23505') throw error;
+    await waitForPlace(1100);
+  }
+  throw new Error(tr('Place lookup is busy. Please try again in a moment.'));
+}
+function geocodePlace(query, abroad = false, townOnly = false) {
+  if (!normalPlace(query)) return Promise.resolve(null);
+  const key = JSON.stringify([normalPlace(query), abroad, townOnly]);
+  const cacheKey = 'jamu-geocode-v1:' + key;
+  const lookup = async () => {
+    let cached;
+    try { cached = JSON.parse(ls.get(cacheKey) || 'null'); } catch { /* invalid cache */ }
+    // Failed searches expire so a corrected OSM entry can be found later.
+    if (cached && (cached.result || Date.now() - cached.at < 7 * 864e5)) return cached.result;
+    const request = () => withGeocodeLease(async () => {
+      if (LIVE) {
+        const { data, error } = await sb.from('records').select('data').eq('collection', 'map_geocode_cache').eq('data->>key', key).order('created_at', { ascending: false }).limit(1);
+        if (error) throw error;
+        const hit = data?.[0]?.data;
+        if (hit && (hit.result || Date.now() - hit.at < 7 * 864e5)) {
+          ls.set(cacheKey, JSON.stringify(hit)); return hit.result;
+        }
+      }
+      const params = new URLSearchParams({ format: 'json', limit: '1', 'accept-language': 'cs' });
+      // Structured city search prevents a home marker from ever resolving to a street.
+      params.set(townOnly ? 'city' : 'q', query.trim());
+      if (!abroad) params.set('countrycodes', 'cz,sk');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+      let rows;
+      try {
+        const response = await fetch((C.geocodingUrl || 'https://nominatim.openstreetmap.org/search') + '?' + params, { signal: controller.signal, referrerPolicy: 'strict-origin-when-cross-origin' });
+        if (!response.ok) throw new Error(tr('Place lookup is unavailable. Please try again.'));
+        rows = await response.json();
+        if (!Array.isArray(rows)) throw new Error(tr('Place lookup is unavailable. Please try again.'));
+      } catch (e) {
+        if (e.name === 'AbortError' || e instanceof TypeError) throw new Error(tr('Place lookup is unavailable. Please try again.'));
+        throw e;
+      } finally { clearTimeout(timer); }
+      const row = rows[0];
+      const candidate = row ? { lat: Number(row.lat), lng: Number(row.lon), geocode_name: String(row.display_name || '').slice(0, 500) } : null;
+      const result = hasCoordinates(candidate) ? candidate : null;
+      const entry = { key, result, at: Date.now() };
+      if (LIVE) await DB.add('map_geocode_cache', entry);
+      ls.set(cacheKey, JSON.stringify(entry));
+      return result;
+    });
+    // Web Locks also covers multiple demo tabs; the database lease covers live devices.
+    return navigator.locks ? navigator.locks.request('jamu-geocoding', request) : request();
+  };
+  const task = geocodeQueue.then(lookup);
+  geocodeQueue = task.catch(() => {});
+  return task;
+}
+async function locateTrip(t) {
+  let found = t.address?.trim() ? await geocodePlace(t.address) : null;
+  if (!found && t.place?.trim() && normalPlace(t.place) !== normalPlace(t.address)) found = await geocodePlace(t.place);
+  return { lat: null, lng: null, geocode_name: '', ...found, geocode_query: tripLocationKey(t), geocode_status: found ? 'found' : 'missing' };
+}
+async function prepareMapLocation(ctx, v) {
+  const loc = ctx.cfg.location;
+  const key = loc.query(v);
+  if (loc.confirmed === key) return true;
+  const original = loc.original;
+  if (loc.kind === 'trip' && original && key === tripLocationKey(original) && hasCoordinates(original)) { loc.patch = {}; return true; }
+  if (loc.kind === 'trip' && !normalPlace(v.place) && !normalPlace(v.address)) {
+    loc.patch = { lat: null, lng: null, geocode_name: '', geocode_query: key, geocode_status: 'missing' };
+    return true;
+  }
+  let note = $('.map-location-preview', ctx.form);
+  if (!note) {
+    note = document.createElement('p'); note.className = 'map-location-preview'; note.setAttribute('role', 'status');
+    $('.sh-body', ctx.form).appendChild(note);
+  }
+  note.textContent = tr('Finding this place…');
+  try {
+    if (loc.kind === 'trip') loc.patch = await locateTrip(v);
+    else {
+      const found = await geocodePlace(v.town, false, true) || await geocodePlace(v.town, true, true);
+      if (!found) { note.textContent = tr('We couldn’t find that town. Try the town and country.'); return false; }
+      loc.patch = found;
+    }
+  } catch (error) {
+    note.textContent = tr('Place lookup is unavailable. Please try again.');
+    return false;
+  }
+  if (sheetCtx !== ctx) return false;
+  // First save looks up the place; the second explicitly confirms the displayed match.
+  loc.confirmed = key;
+  note.textContent = hasCoordinates(loc.patch)
+    ? tr('Found place:') + ' ' + loc.patch.geocode_name.slice(0, 180) + '. ' + tr('Check the place, then save. You can add the district to be more precise.')
+    : tr('We couldn’t find this place. Adjust the address or save without a map point.');
+  const submit = $('[type="submit"]', ctx.form);
+  submit.childNodes[0].nodeValue = tr(hasCoordinates(loc.patch) ? 'Save this place' : 'Save without a map point');
+  return false;
+}
+
+/* ---------------- map: memories and home towns ---------------- */
+let leafletMap = null, mapTrips = null, mapHomes = null;
+let mapFilter = 'all';
+let mapResizeObserver = null;
+let backfillRunning = false;
+const backfillAttempted = new Set();
+function unmountMap() {
+  mapResizeObserver?.disconnect(); mapResizeObserver = null;
+  if (leafletMap) leafletMap.remove();
+  leafletMap = mapTrips = mapHomes = null;
+}
+function mapNotes() {
+  const missing = S.trips.filter(t => !hasCoordinates(t));
+  const absent = mapMembers().filter(m => !hasCoordinates(homeOf(m.id)));
+  return `${missing.length ? `<p><span>We couldn't find these on the map:</span> ${missing.map(t => `<span class="map-missing-trip">${esc(tr(t.title || 'Untitled trip'))}${leads(t) ? ` <button type="button" class="map-text-button" data-action="edit-trip" data-trip="${esc(t.id)}">Fix the place</button>` : ''}</span>`).join(' · ')}</p>` : ''}
+    ${absent.length ? `<p><span>Not on the map yet:</span> ${absent.map(m => `<button type="button" class="map-text-button" data-action="edit-home" data-member="${esc(m.id)}"${m.id === 'nikol' ? ' title="Nikol, there is always a place for you here."' : ''}>${esc(m.short)}</button>`).join(', ')}</p>` : ''}`;
+}
+function viewMap() {
+  return `<div class="stack-lg map-page">
+    <section class="hero"><h1>Map</h1></section>
+    <div class="map-filters" role="group" aria-label="Show on the map">${[['trips', 'Trips'], ['homes', 'Where we live'], ['all', 'All']].map(([value, label]) => `<button class="map-filter" type="button" data-map-filter="${value}" aria-pressed="${mapFilter === value}">${label}</button>`).join('<span aria-hidden="true">·</span>')}</div>
+    <div class="map-card"><div id="memory-map" tabindex="0" role="region" aria-label="Map of our trips and homes"><p class="map-loading">Loading map…</p></div></div>
+    <p class="map-caption">That little piece of the world where we're together.</p>
+    <div class="map-notes" id="map-notes" aria-live="polite">${mapNotes()}</div>
+  </div>`;
+}
+function updateMapNotes() {
+  const notes = $('#map-notes'); if (!notes) return;
+  notes.innerHTML = mapNotes(); translateDOM(notes);
+}
+function mapPopup(html) {
+  const el = document.createElement('div'); el.className = 'memory-popup'; el.innerHTML = html;
+  translateDOM(el); return el;
+}
+function applyMapFilter() {
+  if (!leafletMap) return;
+  for (const [layer, show] of [[mapTrips, mapFilter !== 'homes'], [mapHomes, mapFilter !== 'trips']]) {
+    if (show) { if (!leafletMap.hasLayer(layer)) leafletMap.addLayer(layer); }
+    else if (leafletMap.hasLayer(layer)) leafletMap.removeLayer(layer);
+  }
+}
+function populateMap(fit = false) {
+  if (!leafletMap) return;
+  const L = window.L;
+  mapTrips.clearLayers(); mapHomes.clearLayers();
+  const points = [];
+  for (const t of S.trips.filter(hasCoordinates)) {
+    const next = t.id === planning()?.id;
+    const marker = L.marker([t.lat, t.lng], {
+      title: tr(t.title || 'Untitled trip'), alt: tr(t.title || 'Untitled trip'), keyboard: true,
+      icon: L.divIcon({ className: 'memory-trip' + (next ? ' upcoming' : ''), html: next ? '<span aria-hidden="true">♛</span>' : '', iconSize: next ? [30, 30] : [18, 18], iconAnchor: next ? [15, 15] : [9, 9] })
+    });
+    marker.bindPopup(mapPopup(`<h3>${esc(tr(t.title || 'Untitled trip'))}</h3><p>${esc(fmtRange(t.start, t.end))}</p><p>${esc(tr(t.place || t.address || ''))}</p><a href="#trip-${esc(t.id)}">Open trip</a>`), { maxWidth: 280, closeButton: true, closeOnEscapeKey: true });
+    mapTrips.addLayer(marker); points.push([t.lat, t.lng]);
+  }
+  for (const m of mapMembers()) {
+    const h = homeOf(m.id); if (!hasCoordinates(h)) continue;
+    const label = m.short + ' · ' + h.town;
+    const marker = L.marker([h.lat, h.lng], {
+      title: label, alt: label, keyboard: true,
+      icon: L.divIcon({ className: 'memory-home', html: avatar(m.id), iconSize: [40, 40], iconAnchor: [20, 20] })
+    });
+    const tooltip = document.createElement('span'); tooltip.textContent = label;
+    marker.bindTooltip(tooltip, { direction: 'bottom', offset: [0, 20] });
+    marker.bindPopup(mapPopup(`<h3>${esc(label)}</h3><button type="button" class="map-text-button" data-action="edit-home" data-member="${esc(m.id)}">Change town</button>`), { maxWidth: 280, closeOnEscapeKey: true });
+    mapHomes.addLayer(marker); points.push([h.lat, h.lng]);
+  }
+  applyMapFilter();
+  if (fit) leafletMap.fitBounds(points.length ? points : [[47.7, 12.0], [51.1, 22.6]], { padding: [42, 42], maxZoom: 7 });
+  hydratePhotos().catch(() => {});
+}
+function mountMap() {
+  const host = $('#memory-map');
+  if (!window.L?.markerClusterGroup) { host.innerHTML = '<p class="map-loading">The map could not load. Please check your connection and reopen this page.</p>'; translateDOM(host); return; }
+  const L = window.L;
+  host.innerHTML = '';
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+  const map = leafletMap = L.map(host, { scrollWheelZoom: false, dragging: !touch, tapHold: false });
+  // One-finger swipes remain page scrolling on touchscreens; pinch and +/- still zoom.
+  map.on('click', () => { if (!touch) map.scrollWheelZoom.enable(); });
+  host.addEventListener('mouseleave', () => map.scrollWheelZoom.disable());
+  host.addEventListener('blur', () => map.scrollWheelZoom.disable(), true);
+  const zoomIn = host.querySelector('.leaflet-control-zoom-in'), zoomOut = host.querySelector('.leaflet-control-zoom-out');
+  zoomIn?.setAttribute('title', tr('Zoom in')); zoomIn?.setAttribute('aria-label', tr('Zoom in'));
+  zoomOut?.setAttribute('title', tr('Zoom out')); zoomOut?.setAttribute('aria-label', tr('Zoom out'));
+  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' + esc(tr('contributors'));
+  // CARTO now returns a 200 image reading "API key required" without a key.
+  // Use the brief's keyless OSM fallback rather than displaying those watermarks.
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution, maxZoom: 19 }).addTo(map);
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+  const cluster = kind => L.markerClusterGroup({
+    maxClusterRadius: kind === 'homes' ? 54 : 32, showCoverageOnHover: false,
+    iconCreateFunction: c => L.divIcon({ className: 'memory-cluster ' + kind, html: `<span>${c.getChildCount()}</span>`, iconSize: [42, 42] })
+  });
+  mapTrips = cluster('trips'); mapHomes = cluster('homes');
+  const refreshMapPhotos = () => hydratePhotos().catch(() => {});
+  mapHomes.on('animationend spiderfied', refreshMapPhotos);
+  map.on('zoomend layeradd', refreshMapPhotos);
+  map.on('popupopen', e => {
+    const popup = e.popup.getElement();
+    const close = popup.querySelector('.leaflet-popup-close-button');
+    close?.setAttribute('title', tr('Close')); close?.setAttribute('aria-label', tr('Close'));
+    hydratePhotos().catch(() => {});
+  });
+  $('.map-filters').addEventListener('click', e => {
+    const b = e.target.closest('[data-map-filter]'); if (!b) return;
+    mapFilter = b.dataset.mapFilter;
+    $$('[data-map-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    applyMapFilter();
+  });
+  populateMap(true);
+  if (window.ResizeObserver) { mapResizeObserver = new ResizeObserver(() => { if (leafletMap === map) map.invalidateSize(); }); mapResizeObserver.observe(host); }
+  backfillTripPlaces().catch(() => toast('Some places could not be looked up. Reopen the map to try again.'));
+}
+async function backfillTripPlaces() {
+  if (!LIVE || backfillRunning || !(await isLoggedIn())) return;
+  backfillRunning = true;
+  try {
+    for (const snapshot of S.trips.slice()) {
+      if (route() !== 'map' || !(await isLoggedIn())) break;
+      const key = tripLocationKey(snapshot), attempt = snapshot.id + ':' + key;
+      if (hasCoordinates(snapshot) || snapshot.geocode_query === key || backfillAttempted.has(attempt)) continue;
+      backfillAttempted.add(attempt);
+      try {
+        const patch = await locateTrip(snapshot);
+        if (!(await isLoggedIn())) break;
+        // Re-read just this trip so an edit made during a slow lookup isn't overwritten.
+        const { data: row, error } = await sb.from('records').select('*').eq('id', snapshot.id).maybeSingle();
+        if (error) throw error;
+        if (!row) continue;
+        if (tripLocationKey(row.data) !== key || hasCoordinates(row.data)) {
+          const local = S.trips.find(t => t.id === snapshot.id);
+          if (local) Object.assign(local, row.data);
+          if (route() === 'map' && leafletMap) { populateMap(); updateMapNotes(); }
+          continue;
+        }
+        const { data: updated, error: updateError } = await sb.from('records').update({ data: { ...row.data, ...patch } }).eq('id', snapshot.id).eq('data', JSON.stringify(row.data)).select('id');
+        if (updateError) throw updateError;
+        if (!updated?.length) continue;
+        const local = S.trips.find(t => t.id === snapshot.id);
+        if (local && tripLocationKey(local) === key) Object.assign(local, patch);
+        if (route() === 'map' && leafletMap) { populateMap(); updateMapNotes(); }
+      } catch {
+        toast('Some places could not be looked up. Reopen the map to try again.');
+        break; // A failure/rate limit must not start a stream of retries.
+      }
+    }
+  } finally { backfillRunning = false; }
+}
+
 /* ---------------- render ---------------- */
 function render() {
+  unmountMap();
   const r = route();
   let active = r, html;
   if (r.startsWith('trip-')) { active = 'archive'; html = viewTrip(S.trips.find(t => t.id === r.slice(5))); }
@@ -1808,15 +2112,17 @@ function render() {
   else if (r === 'next') html = viewNext();
   else if (r === 'archive') html = viewArchive();
   else if (r === 'timeline') html = viewTimeline();
+  else if (r === 'map') html = viewMap();
   else if (r === 'ideas') html = viewIdeas();
   else { active = 'home'; html = viewHome(); }
   document.title = tr((PAGE_NAMES[active] && active !== 'home' ? PAGE_NAMES[active] + ' · ' : '') + 'Společenstvo Inscenace');
   document.documentElement.lang = lang();
   app.innerHTML = shell(active, html);
   translateDOM(app);
+  if (r === 'map') mountMap();
   hydratePhotos().catch(e => console.error(e));
 }
-window.addEventListener('hashchange', () => { pendingDelete = null; if ($('.top')) { render(); window.scrollTo(0, 0); } });
+window.addEventListener('hashchange', () => { pendingDelete = null; if (route() === 'map') backfillAttempted.clear(); if ($('.top')) { render(); window.scrollTo(0, 0); } });
 
 async function start() {
   if (!(await isLoggedIn())) return renderLogin();
