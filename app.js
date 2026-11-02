@@ -331,7 +331,7 @@ function openModal(html, onSubmit, setup) {
   const first = $('input, select, textarea, button', modal); if (first) first.focus();
 }
 function closeModal() { $$('.modal-bg').forEach(m => m.remove()); sheetCtx = null; document.body.classList.remove('has-sheet'); }
-document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (sheetCtx) closeSheet(); else { leafletMap?.closePopup(); if (me()) closeModal(); } });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (sheetCtx) closeSheet(); else { closeMemoryCard(); if (me()) closeModal(); } });
 
 /* ---------------- layout ---------------- */
 const NAV = [['home', 'Home'], ['gang', 'The Gang'], ['timeline', 'Timeline'], ['map', 'Map'], ['next', 'Next Trip'], ['archive', 'Archive']];
@@ -1594,7 +1594,7 @@ document.addEventListener('click', async e => {
   if (a === 'switch-me') return pickMe(true);
   if (a === 'logout') return logout();
   if (a === 'edit-home') {
-    const m = member(b.dataset.member); if (!m || m.id === GHOST?.id) return;
+    const m = member(b.dataset.member); if (!m) return pickMe(true); if (m.id === GHOST?.id) return;
     const location = { kind: 'home', query: v => normalPlace(v.town) };
     return openSheet({
       eyebrow: 'Where we live', heading: m.name, primary: 'Save changes', location,
@@ -1910,6 +1910,8 @@ function geocodePlace(query, abroad = false, townOnly = false) {
   return task;
 }
 async function locateTrip(t) {
+  const known = relicFor(t)?.mapRoute;
+  if (known?.length && !hasCoordinates(t)) return { ...known[0], route: known, geocode_name: known[0].name, geocode_query: tripLocationKey(t), geocode_status: 'found' };
   let found = t.address?.trim() ? await geocodePlace(t.address) : null;
   if (!found && t.place?.trim() && normalPlace(t.place) !== normalPlace(t.address)) found = await geocodePlace(t.place);
   return { lat: null, lng: null, geocode_name: '', ...found, geocode_query: tripLocationKey(t), geocode_status: found ? 'found' : 'missing' };
@@ -1953,119 +1955,82 @@ async function prepareMapLocation(ctx, v) {
 }
 
 /* ---------------- map: memories and home towns ---------------- */
-let leafletMap = null, mapTrips = null, mapHomes = null;
-let mapFilter = 'all';
-let mapResizeObserver = null;
+let mapFilter = 'all', memoryHost = null, memoryTimer = null, memoryCleanup = null;
 let backfillRunning = false;
 const backfillAttempted = new Set();
-function unmountMap() {
-  mapResizeObserver?.disconnect(); mapResizeObserver = null;
-  if (leafletMap) leafletMap.remove();
-  leafletMap = mapTrips = mapHomes = null;
+function unmountMap() { clearTimeout(memoryTimer); memoryCleanup?.(); memoryCleanup = null; memoryHost = null; }
+function mapTrip(t) {
+  const relic = relicFor(t);
+  if (relic?.id !== 'dyje-2020') return t;
+  const route = t.route?.length ? t.route : relic.mapRoute;
+  return { ...relic.prepared, ...t, ...(!hasCoordinates(t) ? route[0] : {}), route };
 }
 function mapNotes() {
-  const missing = S.trips.filter(t => !hasCoordinates(t));
-  const absent = mapMembers().filter(m => !hasCoordinates(homeOf(m.id)));
-  return `${missing.length ? `<p><span>We couldn't find these on the map:</span> ${missing.map(t => `<span class="map-missing-trip">${esc(tr(t.title || 'Untitled trip'))}${leads(t) ? ` <button type="button" class="map-text-button" data-action="edit-trip" data-trip="${esc(t.id)}">Fix the place</button>` : ''}</span>`).join(' · ')}</p>` : ''}
-    ${absent.length ? `<p><span>Not on the map yet:</span> ${absent.map(m => `<button type="button" class="map-text-button" data-action="edit-home" data-member="${esc(m.id)}"${m.id === 'nikol' ? ' title="Nikol, there is always a place for you here."' : ''}>${esc(m.short)}</button>`).join(', ')}</p>` : ''}`;
+  return `<div class="memory-index">${S.trips.slice().sort((a,b) => tripSortKey(a).localeCompare(tripSortKey(b))).map(t => `<div data-memory-row="${esc(t.id)}"><a href="#trip-${esc(t.id)}">${esc(tr(t.title || 'Untitled trip'))} <span>· ${(t.start || '').slice(0,4)}</span></a>${!hasCoordinates(mapTrip(t)) && leads(t) ? ` <button class="map-text-button" data-action="edit-trip" data-trip="${esc(t.id)}">Where was it?</button>` : ''}</div>`).join('')}</div><p><span>Not on the map yet:</span> ${mapMembers().filter(m=>!hasCoordinates(homeOf(m.id))).map(m=>`<button class="map-text-button" data-action="edit-home" data-member="${esc(m.id)}">${esc(m.short)}</button>`).join(', ')}</p>`;
 }
 function viewMap() {
-  return `<div class="stack-lg map-page">
-    <section class="hero"><h1>Map</h1></section>
-    <div class="map-filters" role="group" aria-label="Show on the map">${[['trips', 'Trips'], ['homes', 'Where we live'], ['all', 'All']].map(([value, label]) => `<button class="map-filter" type="button" data-map-filter="${value}" aria-pressed="${mapFilter === value}">${label}</button>`).join('<span aria-hidden="true">·</span>')}</div>
-    <div class="map-card"><div id="memory-map" tabindex="0" role="region" aria-label="Map of our trips and homes"><p class="map-loading">Loading map…</p></div></div>
-    <p class="map-caption">That little piece of the world where we're together.</p>
-    <div class="map-notes" id="map-notes" aria-live="polite">${mapNotes()}</div>
-  </div>`;
+  return `<div class="stack-lg map-page"><section class="hero"><h1>Map</h1></section><div class="map-filters" role="group" aria-label="Show on the map">${[['trips','Trips'],['homes','Where we live'],['all','All']].map(([v,l])=>`<button class="map-filter" data-map-filter="${v}" aria-pressed="${mapFilter===v}">${l}</button>`).join('<span aria-hidden="true">·</span>')}</div><div class="map-card"><div id="memory-map" role="region" aria-label="Map of our trips and homes"></div></div><p class="map-caption">That little piece of the world where we're together.</p><div id="map-notes" class="map-notes">${mapNotes()}</div></div>`;
 }
-function updateMapNotes() {
-  const notes = $('#map-notes'); if (!notes) return;
-  notes.innerHTML = mapNotes(); translateDOM(notes);
-}
-function mapPopup(html) {
-  const el = document.createElement('div'); el.className = 'memory-popup'; el.innerHTML = html;
-  translateDOM(el); return el;
-}
+function updateMapNotes() { const el=$('#map-notes'); if(el){el.innerHTML=mapNotes();translateDOM(el);} }
 function applyMapFilter() {
-  if (!leafletMap) return;
-  for (const [layer, show] of [[mapTrips, mapFilter !== 'homes'], [mapHomes, mapFilter !== 'trips']]) {
-    if (show) { if (!leafletMap.hasLayer(layer)) leafletMap.addLayer(layer); }
-    else if (leafletMap.hasLayer(layer)) leafletMap.removeLayer(layer);
-  }
+  if (!memoryHost) return;
+  memoryHost.dataset.filter=mapFilter;
+  $$('[data-memory-kind]',memoryHost).forEach(el=>{ const hidden=mapFilter!=='all' && el.dataset.memoryKind!==mapFilter; el.inert=hidden; el.setAttribute('aria-hidden',String(hidden)); });
+  closeMemoryCard();
 }
-function populateMap(fit = false) {
-  if (!leafletMap) return;
-  const L = window.L;
-  mapTrips.clearLayers(); mapHomes.clearLayers();
-  const points = [];
-  for (const t of S.trips.filter(hasCoordinates)) {
-    const next = t.id === planning()?.id;
-    const marker = L.marker([t.lat, t.lng], {
-      title: tr(t.title || 'Untitled trip'), alt: tr(t.title || 'Untitled trip'), keyboard: true,
-      icon: L.divIcon({ className: 'memory-trip' + (next ? ' upcoming' : ''), html: next ? '<span aria-hidden="true">♛</span>' : '', iconSize: next ? [30, 30] : [18, 18], iconAnchor: next ? [15, 15] : [9, 9] })
-    });
-    marker.bindPopup(mapPopup(`<h3>${esc(tr(t.title || 'Untitled trip'))}</h3><p>${esc(fmtRange(t.start, t.end))}</p><p>${esc(tr(t.place || t.address || ''))}</p><a href="#trip-${esc(t.id)}">Open trip</a>`), { maxWidth: 280, closeButton: true, closeOnEscapeKey: true });
-    mapTrips.addLayer(marker); points.push([t.lat, t.lng]);
-  }
-  for (const m of mapMembers()) {
-    const h = homeOf(m.id); if (!hasCoordinates(h)) continue;
-    const label = m.short + ' · ' + h.town;
-    const marker = L.marker([h.lat, h.lng], {
-      title: label, alt: label, keyboard: true,
-      icon: L.divIcon({ className: 'memory-home', html: avatar(m.id), iconSize: [40, 40], iconAnchor: [20, 20] })
-    });
-    const tooltip = document.createElement('span'); tooltip.textContent = label;
-    marker.bindTooltip(tooltip, { direction: 'bottom', offset: [0, 20] });
-    marker.bindPopup(mapPopup(`<h3>${esc(label)}</h3><button type="button" class="map-text-button" data-action="edit-home" data-member="${esc(m.id)}">Change town</button>`), { maxWidth: 280, closeOnEscapeKey: true });
-    mapHomes.addLayer(marker); points.push([h.lat, h.lng]);
-  }
-  applyMapFilter();
-  if (fit) leafletMap.fitBounds(points.length ? points : [[47.7, 12.0], [51.1, 22.6]], { padding: [42, 42], maxZoom: 7 });
-  hydratePhotos().catch(() => {});
+function closeMemoryCard() { clearTimeout(memoryTimer); if(!memoryHost)return; const c=$('.memory-card',memoryHost); if(c)c.hidden=true; $$('[data-memory-trip]').forEach(b=>b.classList.remove('is-active')); $$('[data-memory-row]').forEach(b=>b.classList.remove('is-active')); }
+function memoryCard(t) {
+  const pick = relicFor(t)?.picks?.[0];
+  const photo = S.photos.find(p=>p.trip_id===t.id);
+  const quote = (t.quotes || '').split('\n').find(q=>q.trim()) || (t.story || '').split(/(?<=[.!?])\s/)[0];
+  return `${pick ? `<img class="memory-cover" onload="this.classList.add('ready')" referrerpolicy="no-referrer" src="https://drive.google.com/thumbnail?id=${encodeURIComponent(pick.id)}&sz=w640" alt="${esc(pick.caption)}">` : photo ? `<img class="memory-cover" onload="this.classList.add('ready')" data-photo="${esc(photo.path)}" alt="">` : ''}<div class="memory-card-body"><h3>${esc(tr(t.title || 'Untitled trip'))}</h3><p>${esc(fmtRange(t.start,t.end))}</p><p>${esc(t.place || '')}</p><div class="memory-crew">${(t.attendees || []).filter(id=>member(id)).map(id=>avatar(id,'xs')).join('')}</div>${quote ? `<blockquote>${esc(quote)}</blockquote>`:''}<a href="#trip-${esc(t.id)}">Open trip →</a></div>`;
+}
+function populateMap() {
+  if (!memoryHost) return;
+  const shape=window.JAMU_MAP_SHAPE;
+  const point=(lat,lng)=>{ const [x,y]=shape.project(lat,lng);return [Math.max(18,Math.min(932,x)),Math.max(18,Math.min(482,y))]; };
+  const trips=S.trips.map(mapTrip).filter(hasCoordinates), homes=mapMembers().filter(m=>hasCoordinates(homeOf(m.id)));
+  const placed=[];
+  const fan=(x,y)=>{for(let i=0;i<50;i++){let a=i*2.4,r=i?14*Math.sqrt(i):0;let p=[x+Math.cos(a)*r,y+Math.sin(a)*r];if(placed.every(q=>Math.hypot(q[0]-p[0],q[1]-p[1])>25)){placed.push(p);return p;}}return [x,y];};
+  memoryHost.innerHTML=`<svg class="memory-stage" viewBox="0 0 950 500" aria-hidden="true">${shape.paths.map(d=>`<path class="memory-country" d="${d}"/>`).join('')}${[['Praha',50.08,14.42],['Brno',49.195,16.607],['Ostrava',49.82,18.26],['Bratislava',48.15,17.11],['Košice',48.72,21.26]].map(([n,a,b])=>{const [x,y]=point(a,b);return `<text x="${x}" y="${y+19}">${n}</text>`;}).join('')}${trips.filter(t=>t.route?.length).map(t=>`<polyline data-memory-kind="trips" class="memory-route" points="${t.route.map(p=>point(p.lat,p.lng).join(',')).join(' ')}"/>`).join('')}</svg>
+  ${trips.map((t,i)=>{let [x,y]=fan(...point(t.lat,t.lng));return `<button class="memory-point ${t.id===planning()?.id?'upcoming':''}" data-memory-kind="trips" data-memory-trip="${esc(t.id)}" aria-label="${esc(tr(t.title || 'Untitled trip'))}" style="left:${x/9.5}%;top:${y/5}%;--delay:${i*40}ms">${t.id===planning()?.id?'♛':'<span></span>'}</button>`;}).join('')}
+  ${homes.map((m,i)=>{const h=homeOf(m.id),[x,y]=point(h.lat,h.lng);const stack=homes.slice(0,i).filter(n=>Math.hypot(homeOf(n.id).lat-h.lat,homeOf(n.id).lng-h.lng)<.03).length;return `<button class="memory-home" data-memory-kind="homes" data-memory-member="${esc(m.id)}" aria-label="${esc(m.short+' · '+h.town)}" style="left:calc(${x/9.5}% + ${stack*13}px);top:${y/5}%">${avatar(m.id,'xs')}</button>`;}).join('')}
+  ${!trips.length&&!homes.length?`<div class="memory-empty"><p>The map will fill up as we add our trip places and home towns.</p><button class="btn" data-action="edit-home" data-member="${esc(me() || '')}">Add my town</button></div>`:''}<div class="memory-card" hidden></div>`;
+  translateDOM(memoryHost); applyMapFilter(); hydratePhotos().catch(()=>{});
+  $$('img.memory-cover',memoryHost).forEach(img=>img.addEventListener('error',()=>img.remove(),{once:true}));
 }
 function mountMap() {
-  const host = $('#memory-map');
-  if (!window.L?.markerClusterGroup) { host.innerHTML = '<p class="map-loading">The map could not load. Please check your connection and reopen this page.</p>'; translateDOM(host); return; }
-  const L = window.L;
-  host.innerHTML = '';
-  const touch = window.matchMedia('(pointer: coarse)').matches;
-  const map = leafletMap = L.map(host, { scrollWheelZoom: false, dragging: !touch, tapHold: false });
-  // One-finger swipes remain page scrolling on touchscreens; pinch and +/- still zoom.
-  map.on('click', () => { if (!touch) map.scrollWheelZoom.enable(); });
-  host.addEventListener('mouseleave', () => map.scrollWheelZoom.disable());
-  host.addEventListener('blur', () => map.scrollWheelZoom.disable(), true);
-  const zoomIn = host.querySelector('.leaflet-control-zoom-in'), zoomOut = host.querySelector('.leaflet-control-zoom-out');
-  zoomIn?.setAttribute('title', tr('Zoom in')); zoomIn?.setAttribute('aria-label', tr('Zoom in'));
-  zoomOut?.setAttribute('title', tr('Zoom out')); zoomOut?.setAttribute('aria-label', tr('Zoom out'));
-  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' + esc(tr('contributors'));
-  // CARTO now returns a 200 image reading "API key required" without a key.
-  // Use the brief's keyless OSM fallback rather than displaying those watermarks.
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution, maxZoom: 19 }).addTo(map);
-  map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
-  const cluster = kind => L.markerClusterGroup({
-    maxClusterRadius: kind === 'homes' ? 54 : 32, showCoverageOnHover: false,
-    iconCreateFunction: c => L.divIcon({ className: 'memory-cluster ' + kind, html: `<span>${c.getChildCount()}</span>`, iconSize: [42, 42] })
-  });
-  mapTrips = cluster('trips'); mapHomes = cluster('homes');
-  const refreshMapPhotos = () => hydratePhotos().catch(() => {});
-  mapHomes.on('animationend spiderfied', refreshMapPhotos);
-  map.on('zoomend layeradd', refreshMapPhotos);
-  map.on('popupopen', e => {
-    const popup = e.popup.getElement();
-    const close = popup.querySelector('.leaflet-popup-close-button');
-    close?.setAttribute('title', tr('Close')); close?.setAttribute('aria-label', tr('Close'));
-    hydratePhotos().catch(() => {});
-  });
-  $('.map-filters').addEventListener('click', e => {
-    const b = e.target.closest('[data-map-filter]'); if (!b) return;
-    mapFilter = b.dataset.mapFilter;
-    $$('[data-map-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    applyMapFilter();
-  });
-  populateMap(true);
-  if (window.ResizeObserver) { mapResizeObserver = new ResizeObserver(() => { if (leafletMap === map) map.invalidateSize(); }); mapResizeObserver.observe(host); }
-  backfillTripPlaces().catch(() => toast('Some places could not be looked up. Reopen the map to try again.'));
+  memoryHost=$('#memory-map'); populateMap();
+  const host=memoryHost, notes=$('#map-notes');
+  const schedule=()=>{clearTimeout(memoryTimer);memoryTimer=setTimeout(closeMemoryCard,220);};
+  const show=(b)=>{
+    clearTimeout(memoryTimer);
+    const trip=b.dataset.memoryTrip || b.dataset.memoryRow;
+    const t=S.trips.find(t=>t.id===trip);
+    const marker=trip?$('[data-memory-trip="'+CSS.escape(trip)+'"]',host):b;
+    if(!marker)return;
+    const card=$('.memory-card',host);
+    card.innerHTML=t?memoryCard(mapTrip(t)):`<div class="memory-card-body"><h3>${esc(nameOf(b.dataset.memoryMember)+' · '+homeOf(b.dataset.memoryMember).town)}</h3><button class="map-text-button" data-action="edit-home" data-member="${esc(b.dataset.memoryMember)}">Change town</button></div>`;
+    translateDOM(card); card.hidden=false;
+    const a=marker.getBoundingClientRect(),r=host.getBoundingClientRect();
+    card.style.left=Math.max(8,Math.min(r.width-card.offsetWidth-8,a.left-r.left+20))+'px';
+    card.style.top=Math.max(8,Math.min(r.height- Math.min(card.offsetHeight,r.height)+35,a.top-r.top+22))+'px';
+    $$('[data-memory-trip],[data-memory-row]').forEach(el=>el.classList.toggle('is-active',(el.dataset.memoryTrip||el.dataset.memoryRow)===trip));
+    hydratePhotos().catch(()=>{}); $$('img.memory-cover',card).forEach(img=>img.addEventListener('error',()=>img.remove(),{once:true}));
+  };
+  const over=e=>{if(e.pointerType==='touch'||(e.type==='focusin'&&matchMedia('(pointer: coarse)').matches&&!e.target.matches(':focus-visible')))return;if(e.target.closest('.memory-card')){clearTimeout(memoryTimer);return;}const b=e.target.closest('[data-memory-trip],[data-memory-member],[data-memory-row]');if(b)show(b);};
+  host.addEventListener('pointerover',over);notes.addEventListener('pointerover',over);
+  host.addEventListener('focusin',over);notes.addEventListener('focusin',over);
+  host.addEventListener('pointerout',schedule);notes.addEventListener('pointerout',schedule);
+  host.addEventListener('focusout',schedule);
+  host.addEventListener('click',e=>{const b=e.target.closest('[data-memory-trip],[data-memory-member]');if(!b)return;if(b.dataset.memoryTrip&&!matchMedia('(pointer: coarse)').matches)location.hash='#trip-'+b.dataset.memoryTrip;else show(b);});
+  host.addEventListener('keydown',e=>{const b=e.target.closest('[data-memory-trip]');if(b&&e.key==='Enter'){e.preventDefault();location.hash='#trip-'+b.dataset.memoryTrip;}});
+  const outside=e=>{if(!host.contains(e.target)&&!notes.contains(e.target))closeMemoryCard();};
+  document.addEventListener('pointerdown',outside);memoryCleanup=()=>document.removeEventListener('pointerdown',outside);
+  $('.map-filters').addEventListener('click',e=>{const b=e.target.closest('[data-map-filter]');if(!b)return;mapFilter=b.dataset.mapFilter;$$('[data-map-filter]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));applyMapFilter();});
+  backfillTripPlaces().catch(()=>toast('Some places could not be looked up. Reopen the map to try again.'));
 }
+
 async function backfillTripPlaces() {
   if (!LIVE || backfillRunning || !(await isLoggedIn())) return;
   backfillRunning = true;
@@ -2073,7 +2038,7 @@ async function backfillTripPlaces() {
     for (const snapshot of S.trips.slice()) {
       if (route() !== 'map' || !(await isLoggedIn())) break;
       const key = tripLocationKey(snapshot), attempt = snapshot.id + ':' + key;
-      if (hasCoordinates(snapshot) || snapshot.geocode_query === key || backfillAttempted.has(attempt)) continue;
+      if (hasCoordinates(snapshot) || (snapshot.geocode_query === key && !relicFor(snapshot)?.mapRoute) || backfillAttempted.has(attempt)) continue;
       backfillAttempted.add(attempt);
       try {
         const patch = await locateTrip(snapshot);
@@ -2085,7 +2050,7 @@ async function backfillTripPlaces() {
         if (tripLocationKey(row.data) !== key || hasCoordinates(row.data)) {
           const local = S.trips.find(t => t.id === snapshot.id);
           if (local) Object.assign(local, row.data);
-          if (route() === 'map' && leafletMap) { populateMap(); updateMapNotes(); }
+          if (route() === 'map' && memoryHost) { populateMap(); updateMapNotes(); }
           continue;
         }
         const { data: updated, error: updateError } = await sb.from('records').update({ data: { ...row.data, ...patch } }).eq('id', snapshot.id).eq('data', JSON.stringify(row.data)).select('id');
@@ -2093,7 +2058,7 @@ async function backfillTripPlaces() {
         if (!updated?.length) continue;
         const local = S.trips.find(t => t.id === snapshot.id);
         if (local && tripLocationKey(local) === key) Object.assign(local, patch);
-        if (route() === 'map' && leafletMap) { populateMap(); updateMapNotes(); }
+        if (route() === 'map' && memoryHost) { populateMap(); updateMapNotes(); }
       } catch {
         toast('Some places could not be looked up. Reopen the map to try again.');
         break; // A failure/rate limit must not start a stream of retries.

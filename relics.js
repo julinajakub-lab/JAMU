@@ -4,6 +4,12 @@
 // "prepared" is a ready-to-check archive entry: the organiser gets a one-click "Add it" on Home.
 window.JAMU_RELICS = [{
   id: 'dyje-2020',
+  mapRoute: [
+    { lat: 48.855, lng: 16.048, name: 'Znojmo' },
+    { lat: 48.818, lng: 16.169, name: 'Krhovice' },
+    { lat: 48.772, lng: 16.268, name: 'Hrádek' },
+    { lat: 48.752, lng: 16.381, name: 'Hevlín' }
+  ],
   match: t => t.relics === 'dyje-2020' || (t.organiser === 'jakub' && /^2020-07/.test(t.start || '')),
 
   prepared: {
