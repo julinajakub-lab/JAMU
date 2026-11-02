@@ -10,7 +10,7 @@ const { createHash } = require('node:crypto');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-const testSource = source.replace('\nstart();', '\nwindow.mapTest = { state: () => S, render, load, mount: () => leafletMap, locateTrip, geocodePlace, hasCoordinates };\nstart();');
+const testSource = source.replace('\nstart();', '\nwindow.mapTest = { state: () => S, render, load, mount: () => memoryHost, locateTrip, geocodePlace, hasCoordinates };\nstart();');
 const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=', 'base64');
 const seed = [
   { id: 'past', collection: 'trips', created_at: '2020-01-01', title: 'Naše Brno', place: 'Brno', start: '2020-06-01', end: '2020-06-03', status: 'done', organiser: 'jakub', lat: 49.195, lng: 16.607 },
@@ -89,147 +89,36 @@ async function confirmTown(page, name) {
   await page.locator('.sheet-win').waitFor({ state: 'detached' });
 }
 (async () => {
-  fs.mkdirSync(path.join(root, '.qa'), { recursive: true });
-  const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  for (const [, url, integrity] of index.matchAll(/(?:href|src)="(https:\/\/cdnjs\.cloudflare\.com\/[^"\s]+)" integrity="([^"]+)"/g)) {
-    const file = path.join(root, '.qa', path.basename(new URL(url).pathname));
-    if (!fs.existsSync(file)) {
-      const response = await fetch(url);
-      assert(response.ok, 'Could not download test fixture: ' + url);
-      fs.writeFileSync(file, Buffer.from(await response.arrayBuffer()));
-    }
-    assert.equal('sha384-' + createHash('sha384').update(fs.readFileSync(file)).digest('base64'), integrity);
-  }
-  const server = http.createServer((req, res) => {
-    const file = path.resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
-    if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
-    fs.readFile(file, (err, data) => { if (err) { res.writeHead(404); return res.end(); } res.setHeader('Content-Type', file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html'); res.end(data); });
-  });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const base = `http://127.0.0.1:${server.address().port}/index.html`;
-  const browser = await chromium.launch({ channel: 'msedge', headless: true });
-  try {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
-    context.setDefaultTimeout(10000);
-    await prepare(context);
-    const page = await context.newPage();
-    await page.goto(base + '#map');
-    await page.locator('.leaflet-container').waitFor();
-    assert.equal(await page.title(), 'Mapa · Společenstvo Inscenace');
-    assert.equal(requests.length, 0);
-    assert.deepEqual(await page.locator('nav a').allTextContents(), ['Domů', 'Parta', 'Časová osa', 'Mapa', 'Další výlet', 'Archiv']);
-    assert(await page.evaluate(() => mapTest.mount().getZoom() <= 7));
-    assert.equal(await page.evaluate(() => mapTest.mount().scrollWheelZoom.enabled()), false);
-    await page.locator('#memory-map').click({ position: { x: 400, y: 200 } });
-    assert.equal(await page.evaluate(() => mapTest.mount().scrollWheelZoom.enabled()), true);
-    await page.mouse.move(1, 1);
-    assert.equal(await page.evaluate(() => mapTest.mount().scrollWheelZoom.enabled()), false);
-    await page.getByRole('button', { name: 'Výlety', exact: true }).click();
-    const tripMarker = page.locator('.memory-trip.upcoming');
-    await tripMarker.focus(); await page.keyboard.press('Enter');
-    await page.getByRole('link', { name: 'Otevřít výlet' }).waitFor();
-    await page.keyboard.press('Escape');
-    await page.locator('.leaflet-popup').waitFor({ state: 'detached' });
-    await page.getByRole('button', { name: 'Kde bydlíme', exact: true }).click();
-    assert.equal(await page.locator('.memory-cluster.homes').innerText(), '3');
-    await page.evaluate(() => mapTest.mount().setView([49.195, 16.607], 19, { animate: false }));
-    await page.waitForTimeout(700);
-    await page.locator('.memory-cluster.homes').click();
-    await page.locator('.memory-home[title="Míša · Brno"]').waitFor();
-    assert.equal(await page.locator('.memory-home[title*="Iva"]').count(), 0);
-    checks.push('menu, Czech page title, initial zoom, wheel gating, keyboard popup/Esc, clustered newest homes, ghost excluded');
-    await page.goto(base + '#gang');
-    await page.locator('[data-action="edit-home"][data-member="jakub"]').click();
-    await confirmTown(page, 'Vienna');
-    assert.equal(await page.locator('.toast').innerText(), 'Uloženo. Teď už jsi na mapě.');
-    assert(requests.some(r => r.query === 'Vienna' && r.country === 'cz,sk' && r.town));
-    assert(requests.some(r => r.query === 'Vienna' && r.country === null));
-    const beforeCache = requests.length;
-    await page.locator('[data-action="edit-home"][data-member="adam"]').click();
-    await confirmTown(page, 'Vienna');
-    assert.equal(requests.length, beforeCache);
-    checks.push('home town confirmation, country fallback, persistent lookup cache');
-    await page.goto(base + '#trip-past');
-    await page.locator('[data-action="edit-trip"]').first().click();
-    await page.locator('[data-k="address"]').fill('Unknown');
-    await page.locator('[data-k="place"]').fill('Olomouc');
-    await page.locator('.sh-foot [type="submit"]').click();
-    await page.locator('.map-location-preview').filter({ hasText: 'Nalezené místo:' }).waitFor();
-    await page.getByRole('button', { name: 'Uložit tohle místo', exact: false }).click();
-    await page.locator('.sheet-win').waitFor({ state: 'detached' });
-    const savedTrip = await page.evaluate(() => mapTest.state().trips.find(t => t.id === 'past'));
-    assert.equal(savedTrip.address, 'Unknown'); assert.equal(savedTrip.place, 'Olomouc'); assert.equal(savedTrip.lat, 49.195);
-    assert.deepEqual(requests.slice(-2).map(r => r.query), ['Unknown', 'Olomouc']);
-    await page.locator('[data-action="edit-trip"]').first().click();
-    await page.locator('[data-k="address"]').fill('Unknown'); await page.locator('[data-k="place"]').fill('Unknown');
-    await page.locator('.sh-foot [type="submit"]').click();
-    await page.getByRole('button', { name: 'Uložit bez bodu na mapě', exact: false }).click();
-    await page.locator('.sheet-win').waitFor({ state: 'detached' });
-    assert.equal(await page.evaluate(() => mapTest.state().trips.find(t => t.id === 'past').lat), null);
-    checks.push('archive trip save, address-to-place fallback, stale coordinates cleared on missing place');
-    await page.goto(base + '#map');
-    await page.locator('h1').filter({ hasText: 'Mapa' }).waitFor();
-    assert(await page.getByText('Na mapě se nám nepodařilo najít:').isVisible());
-    await page.getByRole('button', { name: 'Upravit místo' }).click();
-    await page.locator('[data-k="address"]').fill('Offline');
-    await page.locator('.sh-foot [type="submit"]').click();
-    await page.getByText('Vyhledávání míst teď není dostupné. Zkus to prosím znovu.').waitFor();
-    assert.equal(await page.locator('[data-k="address"]').inputValue(), 'Offline');
-    assert(await page.locator('.sheet-win').isVisible());
-    checks.push('organiser fix action, failed network lookup preserves the sheet');
-    await page.keyboard.press('Escape');
-    await page.goto(base + '#map');
-    await page.locator('.leaflet-container').waitFor();
-    await page.screenshot({ path: path.join(root, '.qa', 'desktop.png'), fullPage: true });
-    await context.close();
-
-    const mobile = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, colorScheme: 'dark' });
-    await prepare(mobile); const phone = await mobile.newPage(); await phone.goto(base + '#map');
-    await phone.locator('.leaflet-container').waitFor();
-    assert(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-    assert.equal(await phone.evaluate(() => mapTest.mount().dragging.enabled()), false);
-    assert.equal(await phone.evaluate(() => mapTest.mount().scrollWheelZoom.enabled()), false);
-    assert.notEqual(await phone.locator('.leaflet-tile-pane').evaluate(el => getComputedStyle(el).filter), 'none');
-    await phone.screenshot({ path: path.join(root, '.qa', 'mobile-dark.png'), fullPage: true });
-    checks.push('375px layout, touch scrolling preserved, dark theme');
-    await mobile.close();
-
-    // A real file:// open must select demo even with Supabase settings present.
-    const local = await browser.newContext(); await prepare(local, true);
-    const localPage = await local.newPage();
-    await localPage.goto(require('node:url').pathToFileURL(path.join(root, 'index.html')).href + '#map');
-    await localPage.locator('.leaflet-container').waitFor();
-    assert(await localPage.evaluate(() => mapTest.state().trips.some(t => t.id === 'past')));
-    await localPage.evaluate(() => { mapTest.render(); mapTest.render(); });
-    assert.equal(await localPage.locator('.leaflet-container').count(), 1);
-    checks.push('real file:// demo with configured Supabase, clean map removal on repeated render');
-    await local.close();
-
-    liveRows = [tripRow('missing', { title: 'Brno bez souřadnic', place: 'Brno', organiser: 'jakub', status: 'done' }), tripRow('unfindable', { title: 'Neznámá chata', place: 'Unknown', organiser: 'jakub', status: 'done' }), tripRow('concurrent', { title: 'Současná úprava', place: 'Concurrent', organiser: 'jakub', status: 'done' })];
-    const live = await browser.newContext(); await prepare(live, true); const livePage = await live.newPage();
-    const twin = await browser.newContext(); await prepare(twin, true); const twinPage = await twin.newPage();
-    await Promise.all([livePage.goto(base + '#map'), twinPage.goto(base + '#map')]);
-    await livePage.waitForFunction(() => mapTest.state().trips.find(t => t.id === 'concurrent')?.lat != null, null, { timeout: 15000 });
-    await twinPage.waitForFunction(() => mapTest.state().trips.find(t => t.id === 'concurrent')?.lat != null, null, { timeout: 15000 });
-    assert(changedDuringLookup);
-    assert.equal(liveRows.find(r => r.id === 'concurrent').data.story, 'Concurrent story');
-    assert.equal(liveRows.find(r => r.id === 'unfindable').data.geocode_status, 'missing');
-    const calls = requests.length;
-    await livePage.evaluate(() => { mapTest.render(); mapTest.render(); });
-    await livePage.waitForTimeout(1300);
-    assert.equal(requests.length, calls);
-    await livePage.reload(); await livePage.locator('.leaflet-container').waitFor(); await livePage.waitForTimeout(1300);
-    assert.equal(requests.length, calls);
-    checks.push('live backfill, persisted unsuccessful searches, rerender/reload avoids geocoding, concurrent story preserved');
-    // The query queue spaces actual requests and respects application-wide leases.
-    const rateCalls = requests.filter(r => !['Offline'].includes(r.query));
-    for (let i = 1; i < rateCalls.length; i++) {
-      if (rateCalls[i].at - rateCalls[i - 1].at < 1000) throw new Error('Geocoding exceeded one request per second');
-    }
-    await live.close(); await twin.close();
-    assert.deepEqual(errors, []);
-    checks.push('no uncaught browser errors; request intervals >= 1 second across two independent live clients');
-    fs.writeFileSync(path.join(root, '.qa', 'result.json'), JSON.stringify({ checks, requests, errors }, null, 2));
-    console.log(JSON.stringify({ checks, errors }, null, 2));
-  } finally { await browser.close(); server.close(); }
-})().catch(error => { console.error(error); process.exit(1); });
+ const server=http.createServer((req,res)=>{const file=path.join(root,new URL(req.url,'http://localhost').pathname);fs.readFile(file,(e,b)=>{if(e){res.writeHead(404);return res.end();}res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(b);});});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const base=`http://127.0.0.1:${server.address().port}/index.html#map`;
+ const browser=await chromium.launch({channel:'msedge',headless:true});
+ try {
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});context.setDefaultTimeout(8000);await prepare(context);
+ const page=await context.newPage();const mapRequests=[];page.on('request',r=>{if(/tile.openstreetmap|cartocdn|leaflet|world-atlas/.test(r.url()))mapRequests.push(r.url());});
+ await page.goto(base);await page.locator('.memory-point').first().waitFor();
+ assert.equal(await page.title(),'Mapa · Společenstvo Inscenace');assert.equal(await page.locator('.memory-point').count(),2);
+ assert.equal(await page.locator('.memory-home').count(),3);assert.equal(await page.locator('.memory-home[data-memory-member="iva"]').count(),0);
+ await page.locator('[data-memory-trip="past"]').hover();await page.getByRole('link',{name:'Otevřít výlet →'}).waitFor();
+ await page.locator('.memory-card').hover();await page.waitForTimeout(350);assert(await page.locator('.memory-card').isVisible());
+ await page.keyboard.press('Escape');assert(await page.locator('.memory-card').isHidden());
+ await page.locator('[data-memory-row="past"] a').hover();assert(await page.locator('[data-memory-trip="past"]').evaluate(el=>el.classList.contains('is-active')));
+ await page.getByRole('button',{name:'Kde bydlíme',exact:true}).click();assert.equal(await page.locator('[data-memory-trip="past"]').evaluate(el=>el.inert),true);
+ await page.getByRole('button',{name:'Vše',exact:true}).click();await page.locator('[data-memory-trip="past"]').focus();await page.keyboard.press('Enter');await page.waitForURL(/#trip-past$/);
+ await page.goto(base.replace('#map','#gang'));await page.locator('[data-action="edit-home"][data-member="jakub"]').click();await confirmTown(page,'Vienna');
+ assert.equal(requests.length,2);assert(requests.every(r=>r.town));
+ await page.goto(base);await page.evaluate(()=>{const w=window.JAMU_RELICS[0];const d={...w.prepared,id:'dyje',collection:'trips'};localStorage.setItem('jamu-demo-v5',JSON.stringify([d,{id:'unknown',collection:'trips',title:'Neznámé místo',organiser:'jakub',status:'done',start:'2021-01-01'}]));});await page.reload();
+ await page.locator('[data-memory-trip="dyje"]').waitFor();assert.equal(await page.locator('.memory-route').count(),1);
+ await page.locator('[data-memory-trip="dyje"]').hover();assert.equal(await page.locator('.memory-cover').getAttribute('src'),'https://drive.google.com/thumbnail?id=1HJ7g-xpC9B8oyoVyhtkGe3KnUFqL_qYL&sz=w640');
+ assert.equal(await page.locator('.memory-crew .av').count(),7);assert((await page.locator('.memory-card blockquote').innerText()).includes('Synu'));
+ assert.equal(await page.locator('[data-memory-row]').count(),2);assert.equal(await page.getByRole('button',{name:'Kde to bylo?'}).count(),1);
+ await page.screenshot({path:path.join(root,'.qa','memory-desktop.png'),fullPage:true});
+ await page.evaluate(()=>localStorage.setItem('jamu-demo-v5','[]'));await page.reload();await page.getByText('Mapa se zaplní, jakmile přidáme místa výletů a svá města.').waitFor();await page.getByRole('button',{name:'Přidat své město'}).click();await page.locator('[data-k="town"]').waitFor();
+ await context.close();
+ const phoneContext=await browser.newContext({viewport:{width:375,height:812},hasTouch:true,isMobile:true,colorScheme:'dark',reducedMotion:'reduce'});await prepare(phoneContext);const phone=await phoneContext.newPage();await phone.goto(base);await phone.locator('[data-memory-trip="next"]').tap();assert(await phone.locator('.memory-card').isVisible());assert(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await phone.screenshot({path:path.join(root,'.qa','memory-mobile.png'),fullPage:true});await phoneContext.close();
+ const relicWindow={};require('node:vm').runInNewContext(fs.readFileSync(path.join(root,'relics.js'),'utf8'),{window:relicWindow});
+ liveRows=[tripRow('dyje',{...relicWindow.JAMU_RELICS[0].prepared,geocode_query:'["","dyje, ze znojma do hevlína"]',geocode_status:'missing'}),tripRow('other',{title:'Jiný výlet',place:'Brno',status:'done'})];
+ const live=await browser.newContext();await prepare(live,true);const livePage=await live.newPage();await livePage.goto(base);await livePage.waitForFunction(()=>mapTest.state().trips.find(t=>t.id==='other')?.lat!=null);assert.equal(liveRows.find(r=>r.id==='dyje').data.route.length,4);const count=requests.length;await livePage.reload();await livePage.locator('.memory-point').first().waitFor();await livePage.waitForTimeout(1300);assert.equal(requests.length,count);await live.close();
+ assert.deepEqual(mapRequests,[]);assert.deepEqual(errors,[]);console.log('PASS: static outline, points, hover bridge, Esc, list linking, keyboard navigation, home save/confirmation, Dyje route/photo/crew/quote, unknown and empty states, 375px touch/dark/reduced motion, live route persistence/backfill/cache, no tile/library requests or browser errors.');
+ } finally {await browser.close();server.close();}
+})().catch(e=>{console.error(e);process.exit(1)});

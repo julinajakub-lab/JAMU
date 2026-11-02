@@ -1,75 +1,54 @@
-# Mapa
+# Memory map
 
-The Map entry sits between Timeline and Next Trip. Leaflet 1.9.4 and
-MarkerCluster 1.5.3 load from cdnjs with SHA-384 integrity checks. Map
-tiles use OpenStreetMap, the brief's fallback, with quiet color styling.
-All map UI copy is in `i18n-cs.js`.
+`#map` is a static illustrated stage with interactive HTML buttons over inline SVG.
+No runtime map library, tiles, zoom controls or boundary requests remain.
+`map-shape.js` contains public-domain Natural Earth boundaries obtained once from
+world-atlas 2.0.2 countries-50m (country ids 203/703), projected at cos(49.5°),
+then simplified to 0.65 SVG units. Its exported `project(lat,lng)` is shared by
+country geometry, town labels, routes, and points.
 
-**Basemap change verified 2 November 2026:** CARTO now requires an API key
-and returns HTTP 200 watermark images without one, so a `tileerror` fallback
-cannot detect the problem. To preserve the explicit no-additional-key
-requirement, the map uses OSM directly. See the
-[official CARTO notice](https://www.carto.com/basemaps/apikey/index.html).
+## Why the first version could look empty
 
-## Places and privacy
+The original renderer discarded all trips without valid numeric coordinates.
+The repository's Dyje place text, “Dyje, ze Znojma do Hevlína”, returns an empty
+Nominatim search result (verified during implementation). It describes an itinerary,
+not a single searchable address. An unsuccessful backfill was persisted and skipped
+on later renders; with no homes set there were no markers left to show.
+This diagnosis uses repository data and an actual public geocoder response;
+the private production database was not accessed.
 
-`homes` records contain `{ member, town, lat, lng, geocode_name, by }`.
-The newest record for each member wins. Only active members are mapped;
-the ghost member is excluded. Homes use a structured city search, never
-a street search. Each member card opens the existing sheet to edit a town.
-Trip records keep their coordinates plus `geocode_name`, `geocode_query`
-and `geocode_status`. Changing a place invalidates the previous coordinates.
+Dyje now has four explicit documented town stops in `relics.js.mapRoute`, separate
+from its existing narrative `route` object. The map can show these immediately,
+including in demo mode. Live backfill also persists the coordinates and route,
+even when a previous failed search was already recorded. It preserves concurrent
+edits. Every trip appears in date order below the illustration regardless of
+coordinates, and its organiser can open the existing trip sheet to fix the place.
+An entirely empty stage includes a Czech explanation and an add-my-town action.
 
-Saving first shows the found name. A second save confirms it; refine the
-town/country or trip address if necessary. Unfindable trips can be saved
-without a marker and their organiser can fix the place below the map.
-An unavailable lookup leaves the sheet and its inputs open for retry.
+## Interaction and data
 
-## Geocoding
+Mouse hover and keyboard focus open a memory card; a short leave delay bridges
+the point and card. Click/Enter opens the trip. Touch opens the card, whose link
+opens the trip. Escape/outside tap dismisses it. Cards use captain's picks or
+uploaded photos, actual attendees and the first quote/story sentence. Photos only
+take space after loading; failures leave no placeholder. Close points fan out;
+homes in the same town overlap quietly, without numbered clusters. Filters fade
+layers and remove hidden controls from keyboard interaction. Reduced motion
+disables arrival/pulse animations. Existing theme tokens handle light/dark modes.
 
-The group explicitly uses Nominatim under its
-[usage policy](https://operations.osmfoundation.org/policies/nominatim/).
-Requests are serialized, cached, identify the website through the browser
-Referer, and leave at least 1.1 seconds between requests. The live site uses
-a shared, expiring lock record (a reserved UUID in `records`) so devices
-cannot look up places concurrently. Cache entries live in the private
-`map_geocode_cache` collection as well as localStorage. A seven-day lifetime
-on unsuccessful searches permits later OSM corrections. Successful results
-are reused. No new table, SQL migration, API key or secret is required.
-`JAMU_CONFIG.geocodingUrl` can override the search endpoint if the service
-needs to change; the existing connection configuration is unchanged.
-
-Trips search address first, then place, within Czechia and Slovakia. Homes
-search within those countries first, then abroad. No autocomplete requests
-are made. A logged-in live Map visit backfills old trips sequentially.
-Failures are attempted once per visit; a saved unsuccessful result is not
-repeated on every render. Compare-and-swap updates protect concurrent edits.
-The backfill stops when leaving the map or logging out. Demo mode never
-backfills; it looks up places only when explicitly saving a sheet.
-
-Opening `index.html` using `file://` always selects demo mode, even when
-the repository's public Supabase configuration is present. Demo records
-and geocoding cache are browser-local. Network access is still required
-for the CDN libraries, map tiles and explicit place lookup.
-
-## Interaction
-
-All is the default filter. Trip and home markers cluster separately and
-coincident markers can be expanded. Markers work with Tab/Enter; Escape
-closes popups. Desktop wheel zoom starts only after clicking the map and
-stops on blur/mouse leave. Touchscreens keep one-finger page scrolling;
-pinch and zoom buttons remain available. Initial bounds fit all available
-points with maximum zoom 7, or Czechia and Slovakia if no point is saved.
-Cards, controls and popups follow the site's light/dark theme.
+Town sheets, `homes` records, confirmed geocoding on save, cached searches,
+application-wide request serialization and sequential live backfill remain.
+Nominatim is called only on save/backfill, at most once per second with caching;
+see https://operations.osmfoundation.org/policies/nominatim/.
+`config.js` and its keys are unchanged. Iva is excluded from map markers.
 
 ## Verification
 
-Run `node --check app.js`, `node --check i18n-cs.js`, and `git diff --check`.
-With Playwright available separately (via `NODE_PATH` or `JAMU_PLAYWRIGHT`),
-run `node tests/map.cjs`. The test uses installed Microsoft Edge headlessly;
-it downloads the pinned CDN fixtures to ignored `.qa/` and verifies their
-integrity. All geocoding and database traffic is mocked. No live group data
-is read or changed. Screenshots and the results report also go to `.qa/`.
-Tests cover demo saves, lookup confirmation and fallbacks, caching, old
-trip backfill, concurrent edits, two live clients sharing the request limit,
-clustering, keyboard popups, and the 375px dark touch layout.
+With Playwright installed separately and Microsoft Edge available, run
+`node tests/map.cjs` (or set `JAMU_PLAYWRIGHT` to its module path).
+Tests mock the geocoder and database; they never mutate production data.
+They cover hover retention, keyboard navigation/Escape, filters, town confirmation,
+Dyje route/photo/attendees/quote, unknown/empty states, 375px touch/dark/reduced
+motion, live route persistence/backfill caching, and absence of tile/library
+requests and uncaught browser errors. Screenshots go to ignored `.qa/`.
+Also run `node --check app.js`, `node --check map-shape.js`, and `git diff --check`.

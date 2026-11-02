@@ -8,6 +8,10 @@ const KINDS = { 'Baby': 'Miminko', 'Love & weddings': 'Láska a svatby', 'New ho
 
 const exact = {
   ...PAGES,
+  'Where was it?': 'Kde to bylo?',
+  'The map will fill up as we add our trip places and home towns.': 'Mapa se zaplní, jakmile přidáme místa výletů a svá města.',
+  'Add my town': 'Přidat své město',
+  'Open trip →': 'Otevřít výlet →',
   'Trips': 'Výlety',
   'Where we live': 'Kde bydlíme',
   'All': 'Vše',
